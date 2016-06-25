@@ -1,0 +1,41 @@
+.codemirrorWrap {
+  -webkit-flex: 1;
+  flex: 1;
+  position: relative;
+}
+
+.CodeMirror-lines {
+  padding: 20px 0;
+}
+.result-window .CodeMirror {
+  background: #f6f7f8;
+}
+
+.result-window .CodeMirror-gutters {
+  background-color: #eeeeee;
+  border-color: #e0e0e0;
+  cursor: col-resize;
+}
+
+.result-window .CodeMirror-foldgutter,
+.result-window .CodeMirror-foldgutter-open:after,
+.result-window .CodeMirror-foldgutter-folded:after {
+  padding-left: 3px;
+}
+
+div.CodeMirror span.CodeMirror-matchingbracket {
+  color: #555;
+  text-decoration: underline;
+}
+
+div.CodeMirror span.CodeMirror-nonmatchingbracket {
+  color: #f00;
+}
+
+.resultWrap .CodeMirror-gutters {
+  cursor: col-resize;
+}
+
+.resultWrap .CodeMirror {
+  background: #f6f7f8;
+}

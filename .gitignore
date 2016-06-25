@@ -1,0 +1,16 @@
+/graphql.schema.json
+/graphql.config.json
+logs
+target
+/.idea
+/.idea_modules
+/.classpath
+/.project
+/.settings
+/RUNNING_PID
+/node_modules
+
+*.iml
+
+# webpack output
+/public/*.*
