@@ -1,0 +1,117 @@
+body {
+  height: 100%;
+  margin: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+#proxy {
+  height: 100vh;
+}
+
+.proxyWrap {
+  display: flex;
+  height: 100%;
+  width: 100%;
+}
+
+.proxyWrapLeft, .proxyWrapRight {
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+}
+
+.proxyWrapLeft .query-editor {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-right: solid 1px #e0e0e0;
+}
+
+
+.proxyWrapLeft .topBarWrap {
+  display: -webkit-flex;
+  display:         flex;
+  -webkit-flex-direction: row;
+  flex-direction: row;
+
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+
+.proxyWrapLeft .topBar {
+  -webkit-align-items: center;
+  align-items: center;
+  background: -webkit-linear-gradient(#f7f7f7, #e2e2e2);
+  background:         linear-gradient(#f7f7f7, #e2e2e2);
+  border-bottom: 1px solid #d0d0d0;
+  cursor: default;
+  display: -webkit-flex;
+  display:         flex;
+  height: 34px;
+  padding: 7px 14px 6px;
+  -webkit-flex: 1;
+  flex: 1;
+  -webkit-flex-direction: row;
+  flex-direction: row;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.proxyWrap {
+  color: #141823;
+  display:         flex;
+  display: -webkit-flex;
+  flex-direction: row;
+  -webkit-flex-direction: row;
+  font-family:
+      system,
+      -apple-system,
+      'San Francisco',
+      '.SFNSDisplay-Regular',
+      'Segoe UI',
+      Segoe,
+      'Segoe WP',
+      'Helvetica Neue',
+      helvetica,
+      'Lucida Grande',
+      arial,
+      sans-serif;
+  font-size: 14px;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.proxyWrap .title {
+  font-size: 18px;
+}
+
+.proxyWrap .title em {
+  font-family: georgia;
+  font-size: 19px;
+}
+
+.proxyWrapLeft .CodeMirror {
+  color: #141823;
+  font-family: 'Consolas', 'Inconsolata', 'Droid Sans Mono', 'Monaco', monospace;
+  font-size: 13px;
+  height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+#graphiql-container .editorBar {
+  margin-left: 1px;
+}
+
+#graphiql-container .queryWrap .CodeMirror-gutters {
+  cursor: col-resize;
+}
+
+.proxyWrapLeft {
+  display: flex;
+}

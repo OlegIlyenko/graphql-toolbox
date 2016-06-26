@@ -2,6 +2,7 @@ import React, { PropTypes } from 'react';
 import ReactDOM from 'react-dom';
 
 import { SchemaEditor } from './SchemaEditor.jsx';
+import GraphiQL from 'graphiql';
 import CodeMirrorSizer from './utility/CodeMirrorSizer';
 import getQueryFacts from './utility/getQueryFacts';
 import getSelectedOperationName from './utility/getSelectedOperationName';
@@ -13,9 +14,8 @@ import { KeepLastTaskQueue } from './KeepLastTaskQueue';
 
 import 'graphiql/graphiql.css'
 
-export class GraphQLFormatter extends React.Component {
+export class GraphQLProxy extends React.Component {
   static propTypes = {
-    formatter: PropTypes.func.isRequired,
     value: PropTypes.string,
   }
 
@@ -29,7 +29,7 @@ export class GraphQLFormatter extends React.Component {
     // Initialize state
     this.state = {
       query,
-      editorFlex: 1,
+      editorFlex: 0.4,
     };
 
     this.taskQueue = new KeepLastTaskQueue()
@@ -39,7 +39,7 @@ export class GraphQLFormatter extends React.Component {
     // Utility for keeping CodeMirror correctly sized.
     this.codeMirrorSizer = new CodeMirrorSizer();
 
-    this.handleFormat(this.state.query)
+    //this.handleFormat(this.state.query)
   }
 
   componentDidUpdate() {
@@ -47,7 +47,7 @@ export class GraphQLFormatter extends React.Component {
     // corresponding CodeMirror instance sizes to match.
     this.codeMirrorSizer.updateSizes([
       this.queryEditorComponent,
-      this.resultComponent,
+      //this.resultComponent,
     ]);
   }
 
@@ -55,7 +55,7 @@ export class GraphQLFormatter extends React.Component {
     const children = React.Children.toArray(this.props.children);
 
     const logo = find(children, child => child.type === GraphQLFormatter.Logo) ||
-      <GraphQLFormatter.Logo />;
+      <GraphQLProxy.Logo />;
 
     const footer = find(children, child => child.type === GraphQLFormatter.Footer);
 
@@ -65,71 +65,36 @@ export class GraphQLFormatter extends React.Component {
     };
 
     return (
-      <div id="graphiql-container">
-        <div className="editorWrap">
+      <div className="proxyWrap" ref={n => { this.editorBarComponent = n; }}>
+        <div className="proxyWrapLeft" style={queryWrapStyle}>
           <div className="topBarWrap">
             <div className="topBar">
               {logo}
             </div>
           </div>
-          <div
-            ref={n => { this.editorBarComponent = n; }}
-            className="editorBar"
-            onMouseDown={this.handleResizeStart}>
-            <div className="queryWrap" style={queryWrapStyle}>
-              <SchemaEditor
-                ref={n => { this.queryEditorComponent = n; }}
-                value={this.state.query}
-                onEdit={this.handleEditQuery}
-              />
-            </div>
-
-            <div className="resultWrap">
-              <SchemaEditor
-                ref={c => { this.resultComponent = c; }}
-                value={this.state.response}
-                readonly={true}
-              />
-              {footer}
-            </div>
-          </div>
+          <SchemaEditor
+            ref={n => { this.queryEditorComponent = n; }}
+            value={this.state.query}
+            onEdit={this.handleEditQuery}
+          />
         </div>
+        <div className="proxyWrapRight" onMouseDown={this.handleResizeStart}>
+          <GraphiQL
+            ref={c => { this.resultComponent = c; }}
+            fetcher = {this.fetcher}
+          />
+        </div>
+
       </div>
     );
   }
 
-  handleFormat = value => {
-    const editedQuery = value || this.state.query;
+  fetcher() {
 
-    this.taskQueue.add(() => {
-      return this._format(editedQuery).then(result => {
-        this.setState({
-          isWaitingForResponse: false,
-          response: result,
-        });
-      })
-    })
-
-    // If an operation was explicitly provided, different from the current
-    this.setState({
-      isWaitingForResponse: true
-    });
-  }
-
-  _format(query) {
-    const formatter = this.props.formatter;
-    const fetch = formatter(query);
-
-    return fetch.catch(error => {
-      this.setState({
-        isWaitingForResponse: false,
-        response: error && (error.stack || String(error))
-      });
-    });
   }
 
   handleEditQuery = value => {
-    this.handleFormat(value)
+    console.info(value)
   }
 
   handleResizeStart = downEvent => {
@@ -150,7 +115,7 @@ export class GraphQLFormatter extends React.Component {
       const leftSize = moveEvent.clientX - getLeft(editorBar) - offset;
       const rightSize = editorBar.clientWidth - leftSize;
 
-      this.setState({ editorFlex: leftSize / rightSize });
+      this.setState({ editorFlex: (leftSize / rightSize) });
     };
 
     let onMouseUp = () => {
@@ -170,8 +135,10 @@ export class GraphQLFormatter extends React.Component {
       return false;
     }
     let target = event.target;
+
     // We use codemirror's gutter as the drag bar.
-    if (target.className.indexOf('CodeMirror-gutter') !== 0) {
+    // `CodeMirror-linenumbers` tells us that it's a left pane (only left pane has line numbers)
+    if (target.className.indexOf('CodeMirror-gutter') < 0 || target.className.indexOf('CodeMirror-linenumbers') < 0) {
       return false;
     }
     // Specifically the result window's drag bar.
@@ -186,16 +153,16 @@ export class GraphQLFormatter extends React.Component {
   }
 }
 
-GraphQLFormatter.Logo = function GraphiQLLogo(props) {
+GraphQLProxy.Logo = function GraphiQLLogo(props) {
   return (
     <div className="title">
-      {props.children || <span>GraphQL Formatter</span>}
+      {props.children || <span>Schema Editor</span>}
     </div>
   );
 };
 
 // Configure the UI by providing this Component as a child of GraphiQL.
-GraphQLFormatter.Footer = function GraphiQLFooter(props) {
+GraphQLProxy.Footer = function GraphiQLFooter(props) {
   return (
     <div className="footer">
       {props.children}

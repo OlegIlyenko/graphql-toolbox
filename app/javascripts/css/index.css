@@ -119,6 +119,9 @@ p {
   width:100%;
   font-size: 20px;
   padding-bottom: 20px;
+  padding-top: 20px;
+
+  background-color: white;
 
   opacity: 0.7;
 }

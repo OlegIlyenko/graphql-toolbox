@@ -4,6 +4,7 @@ const webpack = require("webpack");
 module.exports = {
   entry: {
     format: "./app/javascripts/format.jsx",
+    proxy: "./app/javascripts/proxy.jsx",
     index: ['bootstrap-loader/extractStyles', "./app/javascripts/index.js"]
   },
 

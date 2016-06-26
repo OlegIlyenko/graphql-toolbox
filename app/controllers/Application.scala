@@ -3,6 +3,7 @@ package controllers
 import javax.inject.Inject
 
 import akka.actor.ActorSystem
+import play.api.libs.json.{JsPath, Json}
 import play.api.mvc._
 import play.api.Configuration
 
@@ -17,14 +18,17 @@ class Application @Inject()(system: ActorSystem, config: Configuration) extends 
   import system.dispatcher
 
   val gaCode = config.getString("gaCode")
-  val defaultGraphQLUrl = config.getString("defaultGraphQLUrl").getOrElse(s"http://localhost:${config.getInt("http.port").getOrElse(9000)}")+"/graphql"
 
   def index = Action {
-    Ok(views.html.index(gaCode,defaultGraphQLUrl))
+    Ok(views.html.index(gaCode, "fooo"))
   }
 
   def format = Action {
     Ok(views.html.format(gaCode))
+  }
+
+  def proxy = Action {
+    Ok(views.html.proxy(gaCode))
   }
 
   def formatGet(query: String) = Action.async { request =>

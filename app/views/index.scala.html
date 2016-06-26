@@ -1,4 +1,4 @@
-@(gaCode:Option[String], defaultGraphQLUrl:String)
+@(gaCode:Option[String], foo: String)
 
 @main("GraphQL Toolbox", gaCode) {
 
@@ -11,6 +11,7 @@
                     GraphQL Toolbox is set of GraphQL tools that aims to help with GraphQL server and client development.
                     If you would like to experiment with this project, add new tools or improve existing one, then you can find it on the <a href="https://github.com/OlegIlyenko/graphql-toolbox">GitHub</a>.
                 </p>
+                <p>@foo</p>
             </div>
         </div>
     </section>
@@ -25,20 +26,20 @@
             </div>
 
             <div class="col-sm-6 item-wrap">
-                <div href="#" class="item hvr-shutter-out-vertical">
+                <a href="/proxy" class="item hvr-shutter-out-vertical">
                     <h1><span>HTTP Proxy</span></h1>
                     <p>Provides a dynamic way to create a GraphQL schema based on one or more HTTP endpoints. (coming soon)</p>
-                </div>
+                </a>
             </div>
         </div>
 
         <div class="row" style="padding-top: 30px">
-            <div class="col-sm-6 item-wrap">
-                <div href="#" class="item hvr-shutter-out-vertical">
-                    <h1><span>GraphiQL</span></h1>
-                    <p>GraphiQL that supports multiple tabs, arbitrary endpoints, local storage, HTTP headers and more. (coming soon)</p>
-                </div>
-            </div>
+            @*<div class="col-sm-6 item-wrap">*@
+                @*<div href="#" class="item hvr-shutter-out-vertical">*@
+                    @*<h1><span>GraphiQL</span></h1>*@
+                    @*<p>GraphiQL that supports multiple tabs, arbitrary endpoints, local storage, HTTP headers and more. (coming soon)</p>*@
+                @*</div>*@
+            @*</div>*@
 
             <div class="col-sm-6 item-wrap">
                 <div href="#" class="item hvr-shutter-out-vertical" style="width: 100%">
