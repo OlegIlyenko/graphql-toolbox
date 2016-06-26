@@ -10,13 +10,13 @@ object Webpack {
 
       override def beforeStarted() = {
         process = Option(
-          Process("webpack", base).run()
+          Process("node_modules/.bin/webpack" + sys.props.get("os.name").filter(_.toLowerCase.contains("windows")).map(_ => ".cmd").getOrElse(""), base).run()
         )
       }
 
       override def afterStarted(addr: InetSocketAddress) = {
         process = Option(
-          Process("webpack --watch", base).run()
+          Process("node_modules/.bin/webpack" + sys.props.get("os.name").filter(_.toLowerCase.contains("windows")).map(_ => ".cmd").getOrElse("") + " --watch", base).run()
         )
       }
 
