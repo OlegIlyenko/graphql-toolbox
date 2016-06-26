@@ -20,7 +20,7 @@ class Application @Inject()(system: ActorSystem, config: Configuration) extends 
   val gaCode = config.getString("gaCode")
 
   def index = Action {
-    Ok(views.html.index(gaCode, "fooo"))
+    Ok(views.html.index(gaCode))
   }
 
   def format = Action {
