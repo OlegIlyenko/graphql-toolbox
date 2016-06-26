@@ -78,6 +78,12 @@ class Materializer(client: WSClient)(implicit ec: ExecutionContext) {
       case ast.Argument(`name`, ast.StringValue(str, _, _), _, _) ⇒ Json.parse(str)
     }.getOrElse(throw new IllegalStateException(s"Can't find a directive argument $name"))
 
+  private def directiveMapArg(d: ast.Directive, name: String, mapValue: String ⇒ String = identity) =
+    d.arguments.collectFirst {
+      case ast.Argument(`name`, ast.ObjectValue(fields, _, _), _, _) ⇒
+        fields.map(f ⇒ f.name → mapValue(render(f.value)))
+    }.getOrElse(Nil).filter(_._2.nonEmpty)
+
   private def directiveStringArg(d: ast.Directive, name: String) =
     d.arguments.collectFirst {
       case ast.Argument(`name`, ast.StringValue(str, _, _), _, _) ⇒ str
@@ -127,37 +133,126 @@ class Materializer(client: WSClient)(implicit ec: ExecutionContext) {
   private def convertArgs(args: Args, field: ast.Field): JsObject =
     JsObject(args.raw.keys.flatMap(name ⇒ field.arguments.find(_.name == name).map(a ⇒ a.name → a.value.convertMarshaled[JsValue])).toMap)
 
+  private val PlaceholderRegExp = """\$\{([^}]+)\}""".r
+
+  private def render(value: JsValue) = value match {
+    case JsString(s) ⇒ s
+    case JsNumber(n) ⇒ "" + n
+    case JsBoolean(b) ⇒ "" + b
+    case v ⇒ "" + v
+  }
+
+  private def render(value: ast.Value) = value match {
+    case ast.StringValue(v, _, _) ⇒ v
+    case ast.BigDecimalValue(v, _, _) ⇒ v.toString
+    case ast.BigIntValue(v, _, _) ⇒ v.toString
+    case ast.FloatValue(v, _, _) ⇒ v.toString
+    case ast.BooleanValue(v, _, _) ⇒ v.toString
+    case ast.EnumValue(v, _, _) ⇒ v
+    case _ ⇒ ""
+  }
+
+  private def fillPlaceholders(ctx: Context[_, _], value: String, cachedArgs: Option[JsObject] = None, elem: JsValue = JsNull): String = {
+    lazy val args = cachedArgs getOrElse convertArgs(ctx.args, ctx.astFields.head)
+
+    PlaceholderRegExp.findAllMatchIn(value).toVector.foldLeft(value) { case (acc, p) ⇒
+      val placeholder = p.group(0)
+
+      val idx = p.group(1).indexOf(".")
+
+      if (idx < 0) throw new IllegalStateException(s"Invalid placeholder '$placeholder'. It should contain two parts: scope (like value or ctx) and extractor (name of the field or JSON path) separated byt dot (.).")
+
+      val (scope, selectorWithDot) = p.group(1).splitAt(idx)
+      val selector = selectorWithDot.substring(1)
+
+      val source = scope match {
+        case "value" ⇒ ctx.value.asInstanceOf[JsValue]
+        case "ctx" ⇒ ctx.ctx.asInstanceOf[JsValue]
+        case "arg" ⇒ args
+        case "elem" ⇒ elem
+        case s ⇒ throw new IllegalStateException(s"Unsupported placeholder scope '$s'. Supported scopes are: value, ctx, arg, elem.")
+      }
+
+      val value =
+        if (selector.startsWith("$"))
+          render(JsonPath.query(selector, source))
+        else
+          source.get(selector).map(render).getOrElse("")
+
+      acc.replace(placeholder, value)
+    }
+  }
+
   val schemaBuilder: AstSchemaBuilder[Any] = new DefaultAstSchemaBuilder[Any] {
 
     val directiveMapping: Map[String, (ast.Directive, FieldDefinition) ⇒ Context[Any, _] ⇒ schema.Action[Any, _]] = Map(
       "httpGet" → { (dir, fd) ⇒
-        val url = directiveStringArg(dir, "url")
-        val request = client.url(url)
+        def makeRequest(c: Context[Any, _], args: Option[JsObject], elem: JsValue = JsNull) = {
+          val url = fillPlaceholders(c, directiveStringArg(dir, "url"), args, elem)
+          val headers = directiveMapArg(dir, "headers", fillPlaceholders(c, _, args, elem))
+          val query = directiveMapArg(dir, "query", fillPlaceholders(c, _, args, elem))
 
-        val value = fd.directives.find(_.name == "value").map(d ⇒ directiveMapping(d.name)(d, fd))
+          val request = client.url(url).withHeaders(headers: _*).withQueryString(query: _*)
 
-        c ⇒ request.execute().map { resp ⇒
-          value.fold(extractCorrectValue(c.field.fieldType, Some(resp.json))) {fn ⇒
-            val updated = fn(c.copy(
-              schema = c.schema.asInstanceOf[Schema[Any, Any]],
-              field = c.field.asInstanceOf[Field[Any, Any]],
-              value = resp.json))
+          val value = fd.directives.find(_.name == "value").map(d ⇒ directiveMapping(d.name)(d, fd))
 
-            updated.asInstanceOf[Value[_, _]].value
+          request.execute().map { resp ⇒
+            value.fold(extractCorrectValue(c.field.fieldType, Some(resp.json))) {fn ⇒
+              val updated = fn(c.copy(
+                schema = c.schema.asInstanceOf[Schema[Any, Any]],
+                field = c.field.asInstanceOf[Field[Any, Any]],
+                value = resp.json))
+
+              updated.asInstanceOf[Value[_, _]].value
+            }
           }
+        }
+
+        // todo: Finish forAll
+
+        c ⇒ {
+          val args = Some(convertArgs(c.args, c.astFields.head))
+          directiveStringArgOpt(dir, "forAll") match {
+            case Some(elem) ⇒
+              JsonPath.query(elem, c.value.asInstanceOf[JsValue]) match {
+                case JsArray(elems) ⇒
+                  Future.sequence(elems.map(e ⇒ makeRequest(c, args, e)))
+                case e ⇒
+                  makeRequest(c, args, e)
+              }
+            case None ⇒
+              makeRequest(c, args)
+          }
+
+
+
         }
       },
 
       "jsonConst" → { (dir, _) ⇒
         val value = directiveJsonArg(dir, "value")
 
-        c ⇒ extractCorrectValue(c.field.fieldType, Some(value))
+        c ⇒ {
+          val filled = value match {
+            case JsString(str) ⇒ JsString(fillPlaceholders(c, str))
+            case v ⇒ v
+          }
+
+          extractCorrectValue(c.field.fieldType, Some(filled))
+        }
       },
 
       "const" → { (dir, _) ⇒
         val value = directiveAstArg(dir, "value").convertMarshaled[JsValue]
 
-        c ⇒ extractCorrectValue(c.field.fieldType, Some(value))
+        c ⇒ {
+          val filled = value match {
+            case JsString(str) ⇒ JsString(fillPlaceholders(c, str))
+            case v ⇒ v
+          }
+
+          extractCorrectValue(c.field.fieldType, Some(filled))
+        }
       },
 
       "arg" → { (dir, _) ⇒

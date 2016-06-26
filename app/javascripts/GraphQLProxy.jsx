@@ -96,6 +96,7 @@ export class GraphQLProxy extends React.Component {
             ref={c => { this.resultComponent = c; }}
             fetcher = {this.fetcher.bind(this)}
             schema = {this.state.schema}
+            defaultQuery = {defaultGraphiqlQuery}
           />
         </div>
 
@@ -236,35 +237,57 @@ export class GraphQLProxy extends React.Component {
 }
 
 const defaultQuery =
-`## The root query type
-type Query {
-  names: [Name]
-    @const(value: [
-      {firstName: "John", last: "Doe"},
-      {firstName: "Foo", last: "Bar"}
-    ])
-
-  names1: [Name]
-    @jsonConst(value:
-      "[{\\"firstName\\": \\"John\\", \\"last\\": \\"Doe\\"}, {\\"firstName\\": \\"Foo\\", \\"last\\": \\"Bar\\"}]")
-
-  name: String @const(value: "Bob")
-
-  person: Person @httpGet(url: "http://swapi.co/api/people/1/")
-
-  title: String @const(value: "Hello World!")
+`type Film {
+  title: String
 }
 
 type Person {
   name: String
+  size: Int @value(name: "height")
+  homeworld: Planet @httpGet(url: "\${value.homeworld}")
 }
 
-type Name {
-  firstName: String!
-  lastName: String! @value(name: "last")
+## A planet from the StarWars universe
+type Planet {
+  name: String
 }
 
-schema @const(value: {a: 1, b: ["aa", "bb", "aaa"]}) {
+## The root query type
+type Query {
+	## A character from the StarWars
+  person(id: Int!): Person
+  	@httpGet(url: "http://swapi.co/api/people/\${arg.id}")
+
+  ## A list of characters from the StarWars
+  people(page: Int): [Person]
+  	@httpGet(url: "http://swapi.co/api/people", query: {page: "\${arg.page}"})
+  	@value(name: "results")
+
+  ## A character from the StarWars
+  film(id: Int!): Film
+  	@httpGet(url: "http://swapi.co/api/films/\${arg.id}")
+
+  ## A list of characters from the StarWars
+  films(page: Int): [Film]
+  	@httpGet(url: "http://swapi.co/api/films", query: {page: "\${arg.page}"})
+  	@value(name: "results")
+}
+
+schema {
   query: Query
-}
-`;
+}`;
+
+const defaultGraphiqlQuery =
+`query {
+  person(id: 1) {
+    name
+    size
+    homeworld {
+      name
+    }
+  }
+
+  films {
+    title
+  }
+}`
