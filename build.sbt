@@ -19,6 +19,3 @@ routesGenerator := InjectedRoutesGenerator
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
 herokuAppName in Compile := "graphql-toolbox"
-herokuConfigVars in Compile := Map(
-  "JAVA_OPTS" -> "-DgaCode=UA-65759630-4"
-)
