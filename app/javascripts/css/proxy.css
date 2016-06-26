@@ -9,6 +9,10 @@ body {
   height: 100vh;
 }
 
+#proxy * {
+  box-sizing: content-box;
+}
+
 .proxyWrap {
   display: flex;
   height: 100%;
@@ -28,10 +32,9 @@ body {
   border-right: solid 1px #e0e0e0;
 }
 
-
 .proxyWrapLeft .topBarWrap {
   display: -webkit-flex;
-  display:         flex;
+  display: flex;
   -webkit-flex-direction: row;
   flex-direction: row;
 
@@ -43,11 +46,11 @@ body {
   -webkit-align-items: center;
   align-items: center;
   background: -webkit-linear-gradient(#f7f7f7, #e2e2e2);
-  background:         linear-gradient(#f7f7f7, #e2e2e2);
+  background: linear-gradient(#f7f7f7, #e2e2e2);
   border-bottom: 1px solid #d0d0d0;
   cursor: default;
   display: -webkit-flex;
-  display:         flex;
+  display: flex;
   height: 34px;
   padding: 7px 14px 6px;
   -webkit-flex: 1;
@@ -60,23 +63,22 @@ body {
 
 .proxyWrap {
   color: #141823;
-  display:         flex;
+  display: flex;
   display: -webkit-flex;
   flex-direction: row;
   -webkit-flex-direction: row;
-  font-family:
-      system,
-      -apple-system,
-      'San Francisco',
-      '.SFNSDisplay-Regular',
-      'Segoe UI',
-      Segoe,
-      'Segoe WP',
-      'Helvetica Neue',
-      helvetica,
-      'Lucida Grande',
-      arial,
-      sans-serif;
+  font-family: system,
+  -apple-system,
+  'San Francisco',
+  '.SFNSDisplay-Regular',
+  'Segoe UI',
+  Segoe,
+  'Segoe WP',
+  'Helvetica Neue',
+  helvetica,
+  'Lucida Grande',
+  arial,
+  sans-serif;
   font-size: 14px;
   height: 100%;
   margin: 0;
@@ -125,4 +127,11 @@ body {
 
 .error pre {
   white-space: pre-wrap;
+  color: white;
+
+  font-size: 14px;
+  word-break: break-all;
+  word-wrap: break-word;
+  background-color: transparent;
+  border: none;
 }

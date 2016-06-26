@@ -12,6 +12,9 @@ import { fillLeafs } from './utility/fillLeafs';
 import { getLeft, getTop } from './utility/elementPosition';
 import { KeepLastTaskQueue } from './KeepLastTaskQueue';
 
+import Modal from 'react-bootstrap/lib/Modal';
+import Button from 'react-bootstrap/lib/Button';
+
 import {
   introspectionQuery
 } from './utility/introspectionQueries';
@@ -65,9 +68,6 @@ export class GraphQLProxy extends React.Component {
   render() {
     const children = React.Children.toArray(this.props.children);
 
-    const logo = find(children, child => child.type === GraphQLFormatter.Logo) ||
-      <GraphQLProxy.Logo />;
-
     const queryWrapStyle = {
       WebkitFlex: this.state.editorFlex,
       flex: this.state.editorFlex,
@@ -78,7 +78,9 @@ export class GraphQLProxy extends React.Component {
         <div className="proxyWrapLeft" style={queryWrapStyle}>
           <div className="topBarWrap">
             <div className="topBar">
-              {logo}
+              <div className="title">
+                <span>Schema Editor (<a href="#" onClick={this.help.bind(this)}>help</a>)</span>
+              </div>
             </div>
           </div>
           <SchemaEditor
@@ -96,8 +98,29 @@ export class GraphQLProxy extends React.Component {
             schema = {this.state.schema}
           />
         </div>
+
+        <Modal show={this.state.showHelp} onHide={this.helpHide.bind(this)} bsSize="base" aria-labelledby="contained-modal-title-base">
+          <Modal.Header closeButton>
+            <Modal.Title id="contained-modal-title-base">Schema Definition Help</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <p>TODO</p>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button onClick={this.helpHide.bind(this)}>Close</Button>
+          </Modal.Footer>
+        </Modal>
       </div>
     );
+  }
+
+  helpHide() {
+    this.setState({showHelp: false})
+  }
+
+  help(e) {
+    e.preventDefault()
+    this.setState({showHelp: true})
   }
 
   fetcher(params) {
@@ -146,7 +169,6 @@ export class GraphQLProxy extends React.Component {
           responseString = result.syntaxError
         }
 
-        console.info(result)
         this.setState({ error: responseString });
       }
     }).catch(error => {
@@ -211,14 +233,6 @@ export class GraphQLProxy extends React.Component {
   }
 }
 
-GraphQLProxy.Logo = function GraphiQLLogo(props) {
-  return (
-    <div className="title">
-      {props.children || <span>Schema Editor</span>}
-    </div>
-  );
-};
-
 const defaultQuery =
 `type
   Query {
@@ -232,7 +246,7 @@ const defaultQuery =
   value:
   	String
 
-  aaa: int
+  aaa: Int
 }
 
 #My schema

@@ -1,10 +1,12 @@
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const webpack = require("webpack");
 
+var PROD = JSON.parse(process.env.PROD_ENV || 'false');
+
 module.exports = {
   entry: {
     format: "./app/javascripts/format.jsx",
-    proxy: "./app/javascripts/proxy.jsx",
+    proxy: ['bootstrap-loader/extractStyles', "./app/javascripts/proxy.jsx"],
     index: ['bootstrap-loader/extractStyles', "./app/javascripts/index.js"]
   },
 
@@ -25,9 +27,10 @@ module.exports = {
 
   plugins: [
     new ExtractTextPlugin('[name].css', {allChunks: true}),
-    new webpack.ProvidePlugin({"window.jQuery": "jquery"})//,
-    //new webpack.optimize.UglifyJsPlugin({compress: {warnings: false }})
-  ],
+    new webpack.ProvidePlugin({"window.jQuery": "jquery"})
+  ].concat(
+    PROD ? [new webpack.optimize.UglifyJsPlugin({compress: {warnings: false }})] : []
+  ),
 
   module: {
     loaders: [
