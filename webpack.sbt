@@ -6,7 +6,7 @@ playRunHooks <+= baseDirectory.map(Webpack.apply)
 lazy val webpack = taskKey[Unit]("Run webpack when packaging the application")
 
 def runWebpack(file: File) = {
-  Process("./node_modules/.bin/webpack", file) !
+  Process("node_modules/.bin/webpack", file) !
 }
 
 webpack := {
