@@ -167,6 +167,8 @@ export class GraphQLProxy extends React.Component {
           responseString = result.materiamlizationError
         } else if (result.syntaxError) {
           responseString = result.syntaxError
+        } else if (result.unexpectedError) {
+          responseString = result.unexpectedError
         }
 
         this.setState({ error: responseString });
@@ -234,29 +236,29 @@ export class GraphQLProxy extends React.Component {
 }
 
 const defaultQuery =
-`type
-  Query {
-  		id(
-    # foo bar
-    arg: Int
-  ): Int!
-  # test
+`## The root query type
+type Query {
+  names: [Name]
+    @const(value: [
+      {firstName: "John", last: "Doe"},
+      {firstName: "Foo", last: "Bar"}
+    ])
 
-  #comment
-  value:
-  	String
+  names1: [Name]
+    @jsonConst(value:
+      "[{\\"firstName\\": \\"John\\", \\"last\\": \\"Doe\\"}, {\\"firstName\\": \\"Foo\\", \\"last\\": \\"Bar\\"}]")
 
-  aaa: Int
+  name: String @const(value: "Bob")
+
+  title: String @const(value: "Hello World!")
 }
 
-#My schema
-
-
+type Name {
+  firstName: String!
+  lastName: String! @field(name: "last")
+}
 
 schema {
-  	# foo
-
-  #bar
   query: Query
 }
 `;

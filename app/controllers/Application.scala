@@ -3,7 +3,7 @@ package controllers
 import javax.inject.Inject
 
 import akka.actor.ActorSystem
-import play.api.libs.json.{JsObject, JsString, JsPath, Json}
+import play.api.libs.json.{JsObject, JsString, Json}
 import play.api.mvc._
 import play.api.Configuration
 import sangria.execution.{ErrorWithResolver, QueryAnalysisError, Executor}
@@ -15,6 +15,7 @@ import sangria.renderer.QueryRenderer
 import sangria.schema.{SchemaMaterializationException, Schema}
 
 import scala.concurrent.Future
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 class Application @Inject()(system: ActorSystem, config: Configuration) extends Controller {
@@ -34,21 +35,21 @@ class Application @Inject()(system: ActorSystem, config: Configuration) extends 
     Ok(views.html.proxy(gaCode))
   }
 
-  def graphqlProxy = Action.async(parse.json) { request =>
+  def graphqlProxy = Action.async(parse.json) { request ⇒
     val query = (request.body \ "query").as[String]
     val schema = (request.body \ "schema").as[String]
     val operation = (request.body \ "operationName").asOpt[String]
 
     val variables = (request.body \ "variables").toOption.flatMap {
-      case JsString(vars) => Some(parseVariables(vars))
-      case obj: JsObject => Some(obj)
-      case _ => None
+      case JsString(vars) ⇒ Some(parseVariables(vars))
+      case obj: JsObject ⇒ Some(obj)
+      case _ ⇒ None
     }
 
     materializeSchema(schema) match {
-      case Right(schema) =>
+      case Right(schema) ⇒
         executeQuery(schema, query, variables, operation)
-      case Left(result) =>
+      case Left(result) ⇒
         Future.successful(result)
     }
 
@@ -56,20 +57,23 @@ class Application @Inject()(system: ActorSystem, config: Configuration) extends 
 
   private def materializeSchema(schemaDef: String): Either[Result, Schema[Any, Any]] = {
     QueryParser.parse(schemaDef) match {
-      case Success(schemaAst) =>
+      case Success(schemaAst) ⇒
         try {
-          Right(Schema.buildFromAst(schemaAst))
+          Right(Schema.buildFromAst(schemaAst, Materializer.schemaBuilder))
         } catch {
-          case e: SchemaMaterializationException =>
+          case e: SchemaMaterializationException ⇒
             Left(BadRequest(Json.obj("materiamlizationError" -> e.getMessage)))
+
+          case NonFatal(error) ⇒
+            Left(BadRequest(Json.obj("unexpectedError" -> error.getMessage)))
         }
-      case Failure(error: SyntaxError) =>
+      case Failure(error: SyntaxError) ⇒
         Left(BadRequest(Json.obj(
           "syntaxError" -> error.getMessage,
           "locations" -> Json.arr(Json.obj(
             "line" -> error.originalError.position.line,
             "column" -> error.originalError.position.column)))))
-      case Failure(error) =>
+      case Failure(error) ⇒
         throw error
     }
   }
@@ -81,10 +85,12 @@ class Application @Inject()(system: ActorSystem, config: Configuration) extends 
     QueryParser.parse(query) match {
 
       // query parsed successfully, time to execute it!
-      case Success(queryAst) =>
+      case Success(queryAst) ⇒
         Executor.execute(schema, queryAst,
           operationName = operation,
           variables = variables getOrElse Json.obj(),
+          exceptionHandler = Materializer.exceptionHandler,
+          queryReducers = Materializer.complexityRejecor :: Nil,
           maxQueryDepth = Some(15))
             .map(Ok(_))
             .recover {
@@ -92,30 +98,30 @@ class Application @Inject()(system: ActorSystem, config: Configuration) extends 
               case error: ErrorWithResolver ⇒ InternalServerError(error.resolveError)
             }
 
-      case Failure(error: SyntaxError) =>
+      case Failure(error: SyntaxError) ⇒
         Future.successful(BadRequest(Json.obj(
           "syntaxError" -> error.getMessage,
           "locations" -> Json.arr(Json.obj(
             "line" -> error.originalError.position.line,
             "column" -> error.originalError.position.column)))))
 
-      case Failure(error) =>
+      case Failure(error) ⇒
         throw error
     }
 
-  def formatGet(query: String) = Action.async { request =>
+  def formatGet(query: String) = Action.async { request ⇒
     formatQuery(query)
   }
 
-  def formatPost = Action.async(parse.text) { request =>
+  def formatPost = Action.async(parse.text) { request ⇒
     formatQuery(request.body)
   }
 
   private def formatQuery(query: String) = {
     QueryParser.parse(query) match {
-      case Success(ast) =>
+      case Success(ast) ⇒
         Future.successful(Ok(QueryRenderer.render(ast)))
-      case Failure(error) =>
+      case Failure(error) ⇒
         Future.successful(BadRequest(error.getMessage))
 
     }
