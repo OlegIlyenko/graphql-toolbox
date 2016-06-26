@@ -34,6 +34,10 @@ export class SchemaEditor extends React.Component {
     this.cachedValue = props.value || '';
   }
 
+  shouldComponentUpdate(nextProps, nextState) {
+    return !!this.props.readonly; // do not disturb the editor
+  }
+
   componentDidMount() {
     this.editor = CodeMirror(ReactDOM.findDOMNode(this), {
       value: this.props.value || '',

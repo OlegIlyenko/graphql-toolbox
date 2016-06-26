@@ -4,6 +4,7 @@ import javax.inject.Inject
 
 import akka.actor.ActorSystem
 import play.api.libs.json.{JsObject, JsString, Json}
+import play.api.libs.ws.WSClient
 import play.api.mvc._
 import play.api.Configuration
 import sangria.execution.{ErrorWithResolver, QueryAnalysisError, Executor}
@@ -18,8 +19,10 @@ import scala.concurrent.Future
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
-class Application @Inject()(system: ActorSystem, config: Configuration) extends Controller {
+class Application @Inject()(system: ActorSystem, config: Configuration, client: WSClient) extends Controller {
   import system.dispatcher
+
+  val materializer = new Materializer(client)
 
   val gaCode = config.getString("gaCode")
 
@@ -55,24 +58,24 @@ class Application @Inject()(system: ActorSystem, config: Configuration) extends 
 
   }
 
-  private def materializeSchema(schemaDef: String): Either[Result, Schema[Any, Any]] = {
+  private def materializeSchema(schemaDef: String): Either[Result, (Schema[Any, Any], JsObject)] = {
     QueryParser.parse(schemaDef) match {
       case Success(schemaAst) ⇒
         try {
-          Right(Schema.buildFromAst(schemaAst, Materializer.schemaBuilder))
+          Right(Schema.buildFromAst(schemaAst, materializer.schemaBuilder) → materializer.rootValue(schemaAst))
         } catch {
           case e: SchemaMaterializationException ⇒
-            Left(BadRequest(Json.obj("materiamlizationError" -> e.getMessage)))
+            Left(BadRequest(Json.obj("materiamlizationError" → e.getMessage)))
 
           case NonFatal(error) ⇒
-            Left(BadRequest(Json.obj("unexpectedError" -> error.getMessage)))
+            Left(BadRequest(Json.obj("unexpectedError" → error.getMessage)))
         }
       case Failure(error: SyntaxError) ⇒
         Left(BadRequest(Json.obj(
-          "syntaxError" -> error.getMessage,
-          "locations" -> Json.arr(Json.obj(
-            "line" -> error.originalError.position.line,
-            "column" -> error.originalError.position.column)))))
+          "syntaxError" → error.getMessage,
+          "locations" → Json.arr(Json.obj(
+            "line" → error.originalError.position.line,
+            "column" → error.originalError.position.column)))))
       case Failure(error) ⇒
         throw error
     }
@@ -81,16 +84,20 @@ class Application @Inject()(system: ActorSystem, config: Configuration) extends 
   private def parseVariables(variables: String) =
     if (variables.trim == "" || variables.trim == "null") Json.obj() else Json.parse(variables).as[JsObject]
 
-  private def executeQuery(schema: Schema[Any, Any], query: String, variables: Option[JsObject], operation: Option[String]) =
+  private def executeQuery(schemaAndRoot: (Schema[Any, Any], JsObject), query: String, variables: Option[JsObject], operation: Option[String]) =
     QueryParser.parse(query) match {
 
       // query parsed successfully, time to execute it!
       case Success(queryAst) ⇒
+        val (schema, root) = schemaAndRoot
+
         Executor.execute(schema, queryAst,
+          root = root,
+          userContext = root,
           operationName = operation,
           variables = variables getOrElse Json.obj(),
-          exceptionHandler = Materializer.exceptionHandler,
-          queryReducers = Materializer.complexityRejecor :: Nil,
+          exceptionHandler = materializer.exceptionHandler,
+          queryReducers = materializer.complexityRejecor :: Nil,
           maxQueryDepth = Some(15))
             .map(Ok(_))
             .recover {
@@ -100,10 +107,10 @@ class Application @Inject()(system: ActorSystem, config: Configuration) extends 
 
       case Failure(error: SyntaxError) ⇒
         Future.successful(BadRequest(Json.obj(
-          "syntaxError" -> error.getMessage,
-          "locations" -> Json.arr(Json.obj(
-            "line" -> error.originalError.position.line,
-            "column" -> error.originalError.position.column)))))
+          "syntaxError" → error.getMessage,
+          "locations" → Json.arr(Json.obj(
+            "line" → error.originalError.position.line,
+            "column" → error.originalError.position.column)))))
 
       case Failure(error) ⇒
         throw error

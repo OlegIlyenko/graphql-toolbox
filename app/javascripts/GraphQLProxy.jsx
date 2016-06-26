@@ -99,7 +99,7 @@ export class GraphQLProxy extends React.Component {
           />
         </div>
 
-        <Modal show={this.state.showHelp} onHide={this.helpHide.bind(this)} bsSize="base" aria-labelledby="contained-modal-title-base">
+        <Modal show={this.state.showHelp} onHide={this.helpHide.bind(this)} bsSize="large" aria-labelledby="contained-modal-title-base">
           <Modal.Header closeButton>
             <Modal.Title id="contained-modal-title-base">Schema Definition Help</Modal.Title>
           </Modal.Header>
@@ -250,15 +250,21 @@ type Query {
 
   name: String @const(value: "Bob")
 
+  person: Person @httpGet(url: "http://swapi.co/api/people/1/")
+
   title: String @const(value: "Hello World!")
+}
+
+type Person {
+  name: String
 }
 
 type Name {
   firstName: String!
-  lastName: String! @field(name: "last")
+  lastName: String! @value(name: "last")
 }
 
-schema {
+schema @const(value: {a: 1, b: ["aa", "bb", "aaa"]}) {
   query: Query
 }
 `;
