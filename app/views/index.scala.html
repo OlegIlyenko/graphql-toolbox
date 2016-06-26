@@ -1,24 +1,15 @@
 @(gaCode:Option[String], defaultGraphQLUrl:String)
 
-@main("Take a sip of Sangria Relay!", gaCode) {
+@main("GraphQL Toolbox", gaCode) {
 
     <section class="header">
         <div class="container">
             <div class="blog-header">
-                <img src="@routes.Assets.versioned("images/sip-of-sangria-1.svg")" />
+                <div class="logo-wrap"><span class="logo-text logo-text-left">GraphQL</span><img src="@routes.Assets.versioned("images/graphql-logo-1.svg")" class="" /><span class="logo-text logo-text-right">Toolbox</span></div>
 
                 <p>
-                    This is an example of <a href="https://facebook.github.io/graphql" target="_blank">GraphQL</a>
-                    server supporting <a href="https://facebook.github.io/relay/" target="_blank">Relay</a>
-                    written with <a href="https://www.playframework.com/" target="_blank">Play framework</a>
-                    and <a href="http://sangria-graphql.org/" target="_blank">Sangria</a>
-                    , it also use <a href="https://webpack.github.io/" target="_blank">webpack</a>
-                    for client side assets generation.
-                    On the right hand side you see a textual representation of the GraphQL schema which is implemented on the server and you can query here. On the left hand side you can execute a GraphQL queries and see the results of it's execution.
-                    This example is based on the <a href="https://github.com/facebook/relay/tree/master/examples/star-wars/" target="_blank">
-                    Relay Star Wars example</a>
-                    you can find more info <a href="https://facebook.github.io/relay/docs/graphql-relay-specification.html" target="_blank">
-                    here</a>.
+                    GraphQL Toolbox is set of GraphQL tools that aims to help with GraphQL server and client development.
+                    If you would like to experiment with this project, add new tools or improve existing one, then you can find it on the <a href="https://github.com/OlegIlyenko/graphql-toolbox">GitHub</a>.
                 </p>
             </div>
         </div>
@@ -26,101 +17,43 @@
 
     <div class="container">
         <div class="row">
-
-            <div class="col-sm-7 blog-main">
-                <section>
-                    <h2>GraphQL Query</h2>
-                    <div id="queryEditor"></div>
-                </section>
-
-                <a class="btn" data-toggle="collapse" data-target="#variablesSection" aria-expanded="false" aria-controls="variablesSection" style="margin-right: 10px">
-                    Variables
+            <div class="col-sm-6 item-wrap">
+                <a href="/format" class="item hvr-shutter-out-vertical">
+                    <h1><span>GraphQL Formatter</span></h1>
+                    <p>Formats GraphQL queries and schema definitions. Formatter also correctly handles and formats most of the comments.</p>
                 </a>
-
-                <a class="btn" data-toggle="collapse" data-target="#configSection" aria-expanded="false" aria-controls="configSection" style="margin-right: 10px">
-                    Config
-                </a>
-
-                <a class="btn" data-toggle="collapse" data-target="#exampleSection" aria-expanded="false" aria-controls="exampleSection" style="margin-right: 10px">
-                    Examples
-                </a>
-
-                <a id="permalink" class="btn" aria-expanded="false" title="Permanent Link">
-                    <span class="glyphicon glyphicon-link" aria-hidden="true"></span>
-                </a>
-
-                <a id="runButton" class="btn btn-primary" style="float: right" title="Execute Query (Ctrl + Enter)">
-                    <span class="glyphicon glyphicon-play" aria-hidden="true"></span>
-                </a>
-
-                <section id="exampleSection" class="collapse">
-                    <h2>Examples</h2>
-                    <a id="factionsAndShips" href="#" class="exampleLink">Factions and their ships names</a><br>
-                    <a id="fragmentsExample" href="#" class="exampleLink">
-                        Use of fragments to query common rebels and empire fields</a><br>
-                    <a id="mutationWithInput" href="#" class="exampleLink">Mutation using input variable</a><br>
-                    <a id="fullIntrospection" href="#" class="exampleLink">Full introspection</a>
-                </section>
-
-                <section id="configSection" class="collapse">
-                    <h2>Config</h2>
-
-                    <div class="input-group" style="margin-top: 20px">
-                        <span class="input-group-addon" id="basic-addon1"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span></span>
-                        <input id="graphqlUrl" type="text" class="form-control" placeholder="GraphQL Endpoint URL" aria-describedby="basic-addon1"
-                        value="@{defaultGraphQLUrl}">
-                    </div>
-
-                    <div class="input-group" style="margin-top: 20px">
-                        <span class="input-group-addon" id="basic-addon1"><span class="glyphicon glyphicon-play" aria-hidden="true"></span></span>
-                        <input id="operation" type="text" class="form-control" placeholder="Operation" aria-describedby="basic-addon1">
-                    </div>
-                </section>
-
-                <section id="variablesSection" class="collapse">
-                    <h2>Variables</h2>
-                    <div id="variablesEditor"></div>
-                </section>
-
-                <section id="errors" class="collapse">
-                    <h2>Errors</h2>
-                    <div id="responseError"></div>
-                </section>
-
-                <section id="response" class="collapse">
-                    <h2>Response</h2>
-                    <div id="responseEditor"></div>
-                </section>
             </div>
 
+            <div class="col-sm-6 item-wrap">
+                <div href="#" class="item hvr-shutter-out-vertical">
+                    <h1><span>HTTP Proxy</span></h1>
+                    <p>Provides a dynamic way to create a GraphQL schema based on one or more HTTP endpoints. (coming soon)</p>
+                </div>
+            </div>
         </div>
 
+        <div class="row" style="padding-top: 30px">
+            <div class="col-sm-6 item-wrap">
+                <div href="#" class="item hvr-shutter-out-vertical">
+                    <h1><span>GraphiQL</span></h1>
+                    <p>GraphiQL that supports multiple tabs, arbitrary endpoints, local storage, HTTP headers and more. (coming soon)</p>
+                </div>
+            </div>
+
+            <div class="col-sm-6 item-wrap">
+                <div href="#" class="item hvr-shutter-out-vertical" style="width: 100%">
+                    <h1><span>...</span></h1>
+                    <p>More tools are coming soon.</p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div id="hotkeysDialog" class="modal fade" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title" id="gridSystemModalLabel">Shortcuts</h4>
-                </div>
-                <div class="modal-body">
-                    <div class="shortcut-container">
-                        <div class="shortcut"><kbd>?</kbd></div>
-                        <div class="shortcut-text">This Help</div>
-
-                        <br>
-                        <div class="shortcut"><kbd>Ctrl&nbsp;+&nbsp;Enter</kbd></div>
-                        <div class="shortcut-text">Execute</div>
-
-                        <br>
-                        <div class="shortcut"><kbd>v</kbd></div>
-                        <div class="shortcut-text">Variables</div>
-
-                        <br>
-                        <div class="shortcut"><kbd>c</kbd></div>
-                        <div class="shortcut-text">Config</div>
-                    </div>
+    <div class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-sm-12">
+                    <span>Powered by</span> <a href="http://sangria-graphql.org"><img src="@routes.Assets.versioned("images/sangria-logo.svg")"></a>
                 </div>
             </div>
         </div>

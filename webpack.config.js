@@ -24,8 +24,8 @@ module.exports = {
 
   plugins: [
     new ExtractTextPlugin('[name].css', {allChunks: true}),
-    new webpack.ProvidePlugin({"window.jQuery": "jquery"}),
-    new webpack.optimize.UglifyJsPlugin({compress: {warnings: false }})
+    new webpack.ProvidePlugin({"window.jQuery": "jquery"})//,
+    //new webpack.optimize.UglifyJsPlugin({compress: {warnings: false }})
   ],
 
   module: {
