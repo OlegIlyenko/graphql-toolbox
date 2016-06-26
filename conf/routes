@@ -6,6 +6,7 @@
 GET         /                     controllers.Application.index
 
 GET         /proxy                controllers.Application.proxy
+POST        /graphql-proxy        controllers.Application.graphqlProxy
 
 GET         /format               controllers.Application.format
 GET         /format-query         controllers.Application.formatGet(query: String)

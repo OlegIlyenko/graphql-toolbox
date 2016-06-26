@@ -12,6 +12,17 @@ import { fillLeafs } from './utility/fillLeafs';
 import { getLeft, getTop } from './utility/elementPosition';
 import { KeepLastTaskQueue } from './KeepLastTaskQueue';
 
+import {
+  introspectionQuery
+} from './utility/introspectionQueries';
+
+import {
+  buildClientSchema,
+  GraphQLSchema,
+  parse,
+  print,
+} from 'graphql';
+
 import 'graphiql/graphiql.css'
 
 export class GraphQLProxy extends React.Component {
@@ -57,8 +68,6 @@ export class GraphQLProxy extends React.Component {
     const logo = find(children, child => child.type === GraphQLFormatter.Logo) ||
       <GraphQLProxy.Logo />;
 
-    const footer = find(children, child => child.type === GraphQLFormatter.Footer);
-
     const queryWrapStyle = {
       WebkitFlex: this.state.editorFlex,
       flex: this.state.editorFlex,
@@ -77,24 +86,73 @@ export class GraphQLProxy extends React.Component {
             value={this.state.query}
             onEdit={this.handleEditQuery}
           />
+          {this.state.error &&
+            <div className="error"><pre>{this.state.error}</pre></div>}
         </div>
         <div className="proxyWrapRight" onMouseDown={this.handleResizeStart}>
           <GraphiQL
             ref={c => { this.resultComponent = c; }}
-            fetcher = {this.fetcher}
+            fetcher = {this.fetcher.bind(this)}
+            schema = {this.state.schema}
           />
         </div>
-
       </div>
     );
   }
 
-  fetcher() {
+  fetcher(params) {
+    if (!params.schema)
+      params.schema = this.state.query
 
+    return fetch('/graphql-proxy', {
+      method: 'post',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+      credentials: 'include',
+    }).then(function (response) {
+      return response.text();
+    }).then(function (responseBody) {
+      try {
+        return JSON.parse(responseBody);
+      } catch (error) {
+        return responseBody;
+      }
+    });
   }
 
   handleEditQuery = value => {
-    console.info(value)
+    this.taskQueue.add(() => {
+      return this.updateSchema(value)
+    })
+  }
+
+  updateSchema(schema) {
+    const fetch = this.fetcher({query: introspectionQuery, schema});
+
+    return fetch.then(result => {
+      if (result && result.data) {
+        this.setState({query: schema, schema: buildClientSchema(result.data), error: null});
+      } else {
+        var responseString = typeof result === 'string' ?
+          result :
+          JSON.stringify(result, null, 2);
+
+        if (result.materiamlizationError) {
+          responseString = result.materiamlizationError
+        } else if (result.syntaxError) {
+          responseString = result.syntaxError
+        }
+
+        console.info(result)
+        this.setState({ error: responseString });
+      }
+    }).catch(error => {
+      // TODO: handle error!
+      this.setState({ error: error && (error.stack || String(error)) });
+    });
   }
 
   handleResizeStart = downEvent => {
@@ -161,15 +219,6 @@ GraphQLProxy.Logo = function GraphiQLLogo(props) {
   );
 };
 
-// Configure the UI by providing this Component as a child of GraphiQL.
-GraphQLProxy.Footer = function GraphiQLFooter(props) {
-  return (
-    <div className="footer">
-      {props.children}
-    </div>
-  );
-};
-
 const defaultQuery =
 `type
   Query {
@@ -182,6 +231,8 @@ const defaultQuery =
   #comment
   value:
   	String
+
+  aaa: int
 }
 
 #My schema

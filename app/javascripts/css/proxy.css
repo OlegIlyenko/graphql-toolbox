@@ -115,3 +115,14 @@ body {
 .proxyWrapLeft {
   display: flex;
 }
+
+.error {
+  padding: 15px;
+  opacity: 0.8;
+  background-color: #ff5661;
+  color: white;
+}
+
+.error pre {
+  white-space: pre-wrap;
+}
