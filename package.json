@@ -42,6 +42,6 @@
     "webpack": "1.12.13"
   },
   "scripts": {
-    "heroku-postbuild": "webpack --config=webpack/webpack.config.js"
+    "heroku-postbuild": "npm install webpack -g && webpack --config=webpack/webpack.config.js"
   }
 }
