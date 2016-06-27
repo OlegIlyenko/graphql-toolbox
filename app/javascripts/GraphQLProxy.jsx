@@ -105,7 +105,145 @@ export class GraphQLProxy extends React.Component {
             <Modal.Title id="contained-modal-title-base">Schema Definition Help</Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            <p>TODO</p>
+            <p>
+              Schema definition is based on <a href="https://github.com/facebook/graphql/pull/90" target="_blank">GraphQL IDL additions</a>.
+              IDL syntax allows you to define full GraphQL schema with interfaces, types, enums etc.
+              In order to provide resolution logic for the fields, you can use directives described below.
+              Directives will define how fields will behave. By default (if no directive is provided),
+              field resolve function will treat a contextual value as a JSON object and will return it's
+              property with the same name.
+            </p>
+
+            <h3>Directives</h3>
+
+            <pre>
+              directive @httpGet(url: String!, headers: ObjectOrList, query: ObjectOrList, forAll: String) on FIELD_DEFINITION
+            </pre>
+
+            <p>
+              Provides a way to resolve the field with a result of a GET HTTP request.<br/><br/>
+              Supports following arguments:
+            </p>
+
+            <ul>
+              <li><code>url</code> - the URL of an HTTP request</li>
+              <li>
+                <code>headers</code> - headers that should be sent with the request.
+                The value can be either an input object (e.g <code>{`{Authorization: "Bearer FOOBARBAZ"}`}</code>)
+                or a list with name-value pairs (e.g. <code>[{`{name: "Authorization", value: "Bearer FOOBARBAZ"}`}]</code>)
+              </li>
+              <li>
+                <code>query</code> - query string parameters that should be sent with the request.
+                The value can be either an input object (e.g <code>{`{limit: 10, offset: 0}`}</code>)
+                or a list with name-value pairs (e.g. <code>[{`{name: "page-number", value: "1"}`}]</code>)
+              </li>
+              <li>
+                <code>forAll</code> - A <a href="http://goessner.net/articles/JsonPath/" target="_blank">JSON Path</a> expression. For every element,
+                returned by this expression executed against current context value,
+                a separate HTTP request would be sent. An <code>elem</code> placeholder
+                scope may be used in combination with this argument.
+              </li>
+            </ul>
+
+            <p>
+              <code>url</code>, <code>headers</code> and <code>query</code> may contain the placeholders which are described below.
+              <code>value</code> directive may be used in combination with <code>httpGet</code> - it will extract part of the relevant JSON out of the HTTP response.
+            </p>
+
+            <pre>
+              directive @const(value: Any!) on FIELD_DEFINITION | SCHEMA
+            </pre>
+
+            <p>
+              Provides a way to resolve a field with a constant value.
+              <code>value</code> can be any valid GraphQL input value. It would be treated as a JSON value.
+            </p>
+
+            <pre>
+              directive @jsonConst(value: String!) on FIELD_DEFINITION | SCHEMA
+            </pre>
+
+            <p>
+              Provides a way to resolve a field with a constant value.
+              <code>value</code> should be a valid JSON value.
+            </p>
+
+            <pre>
+              directive @arg(name: String!) on FIELD_DEFINITION
+            </pre>
+
+            <p>
+              Provides a way to resolve a field with value of one of its arguments.
+            </p>
+
+            <pre>
+              directive @value(name: String, path: String) on FIELD_DEFINITION
+            </pre>
+
+            <p>
+              Extracts a value(s) from the context object. It supports following extractors via arguments (only one can be used):
+            </p>
+
+            <ul>
+              <li><code>name</code> - Extracts a named property value from a context JSON object</li>
+              <li><code>path</code> - A <a href="http://goessner.net/articles/JsonPath/" target="_blank">JSON Path</a> expression. It would be executed against current context JSON value.</li>
+            </ul>
+
+            <pre>
+              directive @context(name: String, path: String) on FIELD_DEFINITION
+            </pre>
+
+            <p>
+              Extracts a value(s) from the context object defined on the schema level. It supports following extractors via arguments (only one can be used):
+            </p>
+
+            <ul>
+              <li><code>name</code> - Extracts a named property value from a JSON object</li>
+              <li><code>path</code> - A <a href="http://goessner.net/articles/JsonPath/" target="_blank">JSON Path</a> expression. It would be executed against current context JSON value, which is defined at the schema level.</li>
+            </ul>
+
+            <h3>Placeholders</h3>
+
+            <p>Placeholders may be used in some the directive arguments (inside of the strings) and the syntax looks like this:</p>
+
+            <pre>
+              {`\${value.$.results[0].film}`}
+            </pre>
+
+            <p>
+              The placeholder consists of two parts separated by dot (<code>.</code>): the scope (<code>value</code> in this case) and
+              the extractor (<code>$.results[0].film</code> - a JSON Path extractor in this example).
+              The scope defines a place/value from which you would like extract a value. Following scopes are supported:
+            </p>
+
+            <ul>
+              <li><code>arg</code> - field argument</li>
+              <li><code>value</code> - a context value</li>
+              <li><code>ctx</code> - a context value which is defined on a schema level</li>
+              <li><code>elem</code> - an extracted element that comes from the <code>forAll</code> argument</li>
+            </ul>
+
+            <p>
+              The extractor can be either a string (the name of the property) or a <a href="http://goessner.net/articles/JsonPath/" target="_blank">JSON Path</a> expression.
+            </p>
+
+            <h3>Descriptions</h3>
+
+            <p>
+              All elements of a schema (like types, fields, arguments, etc.)
+              support descriptions. You can provide them via double-comment sign (<code>##</code>).
+              Here is an example:
+            </p>
+
+            <pre><code>{
+`## The root query type.
+type Query {
+  ## A character from the StarWars
+  person(
+    ## ID of a character
+    id: Int!): Person
+}`
+            }</code></pre>
           </Modal.Body>
           <Modal.Footer>
             <Button onClick={this.helpHide.bind(this)}>Close</Button>

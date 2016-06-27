@@ -82,6 +82,16 @@ class Materializer(client: WSClient)(implicit ec: ExecutionContext) {
     d.arguments.collectFirst {
       case ast.Argument(`name`, ast.ObjectValue(fields, _, _), _, _) ⇒
         fields.map(f ⇒ f.name → mapValue(render(f.value)))
+      case ast.Argument(`name`, ast.ListValue(values, _, _), _, _) ⇒
+        values.flatMap {
+          case ast.ObjectValue(fields, _, _) ⇒
+            for {
+              name ← fields.find(_.name == "name")
+              value ← fields.find(_.name == "value")
+            } yield render(name.value) → render(value.value)
+
+          case _ ⇒ None
+        }
     }.getOrElse(Nil).filter(_._2.nonEmpty)
 
   private def directiveStringArg(d: ast.Directive, name: String) =
@@ -126,6 +136,7 @@ class Materializer(client: WSClient)(implicit ec: ExecutionContext) {
     case t: ScalarType[_] if t eq BigIntType ⇒ value.get.bigIntValue
     case t: ScalarType[_] if t eq BigDecimalType ⇒ value.get.bigDecimalValue
     case t: ScalarType[_] if t eq FloatType ⇒ value.get.doubleValue
+    case t: EnumType[_] ⇒ value.get.stringValue
     case t: CompositeType[_] ⇒ value.get
     case t ⇒ throw new IllegalStateException(s"Builder for type '$t' is not supported yet.")
   }
@@ -183,12 +194,19 @@ class Materializer(client: WSClient)(implicit ec: ExecutionContext) {
     }
   }
 
+  def namedType(tpe: OutputType[_]): OutputType[_] = tpe match {
+    case ListType(of) ⇒ namedType(of)
+    case OptionType(of) ⇒ namedType(of)
+    case t ⇒ t
+  }
+
   val schemaBuilder: AstSchemaBuilder[Any] = new DefaultAstSchemaBuilder[Any] {
 
     val directiveMapping: Map[String, (ast.Directive, FieldDefinition) ⇒ Context[Any, _] ⇒ schema.Action[Any, _]] = Map(
       "httpGet" → { (dir, fd) ⇒
-        def makeRequest(c: Context[Any, _], args: Option[JsObject], elem: JsValue = JsNull) = {
+        def makeRequest(tpe: OutputType[_], c: Context[Any, _], args: Option[JsObject], elem: JsValue = JsNull) = {
           val url = fillPlaceholders(c, directiveStringArg(dir, "url"), args, elem)
+
           val headers = directiveMapArg(dir, "headers", fillPlaceholders(c, _, args, elem))
           val query = directiveMapArg(dir, "query", fillPlaceholders(c, _, args, elem))
 
@@ -197,10 +215,10 @@ class Materializer(client: WSClient)(implicit ec: ExecutionContext) {
           val value = fd.directives.find(_.name == "value").map(d ⇒ directiveMapping(d.name)(d, fd))
 
           request.execute().map { resp ⇒
-            value.fold(extractCorrectValue(c.field.fieldType, Some(resp.json))) {fn ⇒
+            value.fold(extractCorrectValue(tpe, Some(resp.json))) {fn ⇒
               val updated = fn(c.copy(
                 schema = c.schema.asInstanceOf[Schema[Any, Any]],
-                field = c.field.asInstanceOf[Field[Any, Any]],
+                field = c.field.asInstanceOf[Field[Any, Any]].copy(fieldType = tpe.asInstanceOf[OutputType[Any]]),
                 value = resp.json))
 
               updated.asInstanceOf[Value[_, _]].value
@@ -208,20 +226,21 @@ class Materializer(client: WSClient)(implicit ec: ExecutionContext) {
           }
         }
 
-        // todo: Finish forAll
-
         c ⇒ {
           val args = Some(convertArgs(c.args, c.astFields.head))
+
           directiveStringArgOpt(dir, "forAll") match {
             case Some(elem) ⇒
               JsonPath.query(elem, c.value.asInstanceOf[JsValue]) match {
                 case JsArray(elems) ⇒
-                  Future.sequence(elems.map(e ⇒ makeRequest(c, args, e)))
+                  Future.sequence(elems.map(e ⇒ makeRequest(namedType(c.field.fieldType), c, args, e))) map { v ⇒
+                    extractCorrectValue(c.field.fieldType, Some(JsArray(v.asInstanceOf[Seq[JsValue]])))
+                  }
                 case e ⇒
-                  makeRequest(c, args, e)
+                  makeRequest(c.field.fieldType, c, args, e)
               }
             case None ⇒
-              makeRequest(c, args)
+              makeRequest(c.field.fieldType, c, args)
           }
 
 

@@ -135,3 +135,11 @@ body {
   background-color: transparent;
   border: none;
 }
+
+.modal-body {
+  height: 600px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 20px;
+}
