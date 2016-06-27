@@ -13,4 +13,4 @@ $ npm install
 $ sbt run
 ```
 
-This will run the Play app in a dev mode which means that it will pick up all of the changes to a source code (it also includes resources managed by webpack).
+This will run the Play app in a dev mode which means that it will pick up all of the changes to a source code (this also includes resources managed by webpack).
