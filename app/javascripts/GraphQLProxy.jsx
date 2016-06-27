@@ -237,22 +237,13 @@ export class GraphQLProxy extends React.Component {
 }
 
 const defaultQuery =
-`type Film {
-  title: String
+`## It's an example schema
+## that proxies some poarets of the http://swapi.co
+schema @const(value: {baseUrl: "http://swapi.co"}) {
+  query: Query
 }
 
-type Person {
-  name: String
-  size: Int @value(name: "height")
-  homeworld: Planet @httpGet(url: "\${value.homeworld}")
-}
-
-## A planet from the StarWars universe
-type Planet {
-  name: String
-}
-
-## The root query type
+## The root query type.
 type Query {
 	## A character from the StarWars
   person(id: Int!): Person
@@ -269,21 +260,59 @@ type Query {
 
   ## A list of characters from the StarWars
   films(page: Int): [Film]
-  	@httpGet(url: "http://swapi.co/api/films", query: {page: "\${arg.page}"})
+  	@httpGet(url: "\${ctx.baseUrl}/api/films", query: {page: "\${arg.page}"})
   	@value(name: "results")
+
+  ## just an exmaple of static data
+  ## defined directly in the schema
+  fruits: [Fruit]
+    @const(value: [
+      {name: "Apple", size: Small},
+      {name: "Watermelon", size: Big}])
 }
 
-schema {
-  query: Query
-}`;
+type Film {
+  title: String
+}
+
+type Person {
+  name: String
+  size: Int @value(name: "height")
+  homeworld: Planet @httpGet(url: "\${value.homeworld}")
+  films: [Film] @httpGet(forAll: "$.films", url: "\${elem.$}")
+}
+
+## A planet from the StarWars universe
+type Planet {
+  name: String
+}
+
+enum FruitSize {
+  ## A very big fruit
+  Big
+
+  ## Small fruit, like apple
+  Small
+}
+
+type Fruit {
+  name: String
+  size: FruitSize
+}
+`;
 
 const defaultGraphiqlQuery =
 `query {
   person(id: 1) {
     name
     size
+
     homeworld {
       name
+    }
+
+    films {
+      title
     }
   }
 
