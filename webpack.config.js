@@ -5,8 +5,8 @@ var PROD = JSON.parse(process.env.PROD_ENV || 'false');
 
 module.exports = {
   entry: {
-    format: "./app/javascripts/format.jsx",
-    proxy: ['bootstrap-loader/extractStyles', "./app/javascripts/proxy.jsx"],
+    format: ['whatwg-fetch', "./app/javascripts/format.jsx"],
+    proxy: ['whatwg-fetch', 'bootstrap-loader/extractStyles', "./app/javascripts/proxy.jsx"],
     index: ['bootstrap-loader/extractStyles', "./app/javascripts/index.js"]
   },
 
