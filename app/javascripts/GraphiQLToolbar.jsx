@@ -17,13 +17,14 @@ export class GraphiQLToolbar extends React.Component {
     const reopenTooltip = <Tooltip id="tooltip"><strong>Reopen closed tab</strong></Tooltip>
     const exportTooltip = <Tooltip id="tooltip"><strong>Save workspace</strong></Tooltip>
     const restoreTooltip = <Tooltip id="tooltip"><strong>Open workspace</strong> (drag&drop file here or just click the icon)</Tooltip>
+    const cleanTooltip = <Tooltip id="tooltip"><strong>Cleanup the workspace and start from scratch</strong></Tooltip>
     const placement = "left"
 
     return <div className="graphiql-toolbar">
       {this.props.hasClosed &&
         <span>
           <OverlayTrigger placement={placement} overlay={reopenTooltip}>
-          <Button bsStyle="link" bsSize="large" onClick={this.action.bind(this, "reopen")}><Glyphicon glyph="share-alt" /></Button>
+            <Button bsStyle="link" bsSize="large" onClick={this.action.bind(this, "reopen")}><Glyphicon glyph="share-alt" /></Button>
           </OverlayTrigger><br/>
         </span>
       }
@@ -36,6 +37,12 @@ export class GraphiQLToolbar extends React.Component {
           <Button bsStyle="link" bsSize="large"><Glyphicon glyph="open" /></Button>
         </OverlayTrigger>
       </Dropzone>
+
+      <span>
+        <OverlayTrigger placement={placement} overlay={cleanTooltip}>
+          <Button bsStyle="link" bsSize="large" onClick={this.action.bind(this, "clean")}><Glyphicon glyph="trash" /></Button>
+        </OverlayTrigger>
+      </span>
     </div>
   }
 

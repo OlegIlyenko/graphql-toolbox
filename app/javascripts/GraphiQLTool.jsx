@@ -133,6 +133,15 @@ export class GraphiQLTool extends React.Component {
         visited: [],
         aboutToPrepare: newConfig.getActiveId()
       })
+    } else if (action == "clean") {
+      this.state.config.cleanup()
+      const newConfig = new AppConfig("graphiql")
+
+      this.setState({
+        config: newConfig,
+        visited: [],
+        aboutToPrepare: newConfig.getActiveId()
+      })
     }
 
     if (this.props.onToolbar)

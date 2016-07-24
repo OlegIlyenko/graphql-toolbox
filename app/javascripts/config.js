@@ -87,6 +87,10 @@ export class AppConfig {
       })
 
       this.tabInfo = this.state.tabIds.map(id => new TabConfig(id))
+
+      if (this.getTabs().length == 0) {
+        this.addTab()
+      }
     } else {
       const tabs = key.tabs
       const doc = _.omit(key, ["tabs"])
