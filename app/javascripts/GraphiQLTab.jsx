@@ -82,7 +82,8 @@ export class GraphiQLTab extends React.Component {
     if (this.state.appConfig.state.recentHeaders.length > 0) {
       const items = this.state.appConfig.state.recentHeaders.map(header => {
         const label = header.name + ": " + header.value
-        return <MenuItem key={label} onClick={this.addHeader.bind(this, header, false)}>{label}</MenuItem>
+        const labelo = header.name + ": " + this.headerValue(header, true)
+        return <MenuItem key={label} onClick={this.addHeader.bind(this, header, false)}>{labelo}</MenuItem>
       })
 
       recentHeaders = <DropdownButton id="recent-header" title="Recent">
@@ -96,7 +97,7 @@ export class GraphiQLTab extends React.Component {
       let values = this.state.config.state.headers.map((header, idx) => {
         return <tr key={header.name + header.value}>
           <td>{header.name}</td>
-          <td>{header.value}</td>
+          <td>{this.headerValue(header)}</td>
           <td>
             <Button bsStyle="link" onClick={this.editHeader.bind(this, header, idx)}><Glyphicon glyph="edit" bsSize="small" /></Button>
             <Button bsStyle="link" onClick={this.removeHeader.bind(this, header, idx)}><Glyphicon glyph="remove" bsSize="small" /></Button>
@@ -174,6 +175,32 @@ export class GraphiQLTab extends React.Component {
           fetcher={this.fetcher.bind(this)} />
       </div>
     </div>
+  }
+
+  headerValue(h, partial) {
+    function replace(s) {
+      if (partial) {
+        const first = s.substring(0, s.length - 4)
+        const last = s.substring(s.length - 4)
+        return _.replace(first, /./g, "\u2022") + last
+      } else {
+        return _.replace(s, /./g, "\u2022")
+      }
+    }
+
+    if (_.toLower(h.name) == "authorization") {
+      const prefix = "Bearer "
+
+      if (h.value.startsWith(prefix)) {
+        const token = h.value.substring(prefix.length)
+
+        return prefix + replace(token)
+      } else {
+        return replace(h.value)
+      }
+    } else {
+      return h.value
+    }
   }
 
   addHeader(h, edit) {
