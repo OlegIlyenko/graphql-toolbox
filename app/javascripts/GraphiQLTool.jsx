@@ -91,7 +91,7 @@ export class GraphiQLTool extends React.Component {
     return <Tabs id="main-tabs" animation={false} className="tabs" activeKey={this.state.config.getActiveId()} onSelect={this.handleSelect.bind(this)}>
       {tabs}
 
-      <Tab key="new" eventKey="new" title="+ New Query">
+      <Tab key="new" eventKey="new" title="+ New Query" className="new-tab">
         <a id="downloadAnchorElem" style={{display: "none"}}></a>
       </Tab>
     </Tabs>;

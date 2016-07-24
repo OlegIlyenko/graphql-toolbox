@@ -223,3 +223,7 @@ body, html {
 .header-add {
   font-size: 15px !important;
 }
+
+.nav-tabs li a {
+  top: -1px;
+}
