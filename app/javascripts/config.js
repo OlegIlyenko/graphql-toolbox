@@ -190,7 +190,6 @@ export class AppConfig {
   }
 
   rememberTab(tab) {
-    console.info(tab.state.state)
     if (this.state.closedTabs.length >= this.state.maxTabHistory)
       this.state.setState({closedTabs: _.dropRight(this.state.closedTabs)})
 

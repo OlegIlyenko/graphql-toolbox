@@ -205,7 +205,6 @@ export class GraphiQLTab extends React.Component {
 
   addHeader(h, edit) {
     if (h) {
-      console.info(edit)
       if (edit) {
         this.setState({header: h, headerIdx: null})
       } else {
