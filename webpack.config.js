@@ -7,6 +7,7 @@ module.exports = {
   entry: {
     format: ['whatwg-fetch', "./app/javascripts/format.jsx"],
     proxy: ['whatwg-fetch', 'bootstrap-loader/extractStyles', "./app/javascripts/proxy.jsx"],
+    graphiql: ['whatwg-fetch', 'bootstrap-loader/extractStyles', "./app/javascripts/graphiql.jsx"],
     index: ['bootstrap-loader/extractStyles', "./app/javascripts/index.js"]
   },
 
@@ -31,6 +32,10 @@ module.exports = {
   ].concat(
     PROD ? [new webpack.optimize.UglifyJsPlugin({compress: {warnings: false }})] : []
   ),
+
+  watchOptions: {
+    aggregateTimeout: 10
+  },
 
   module: {
     loaders: [

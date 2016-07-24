@@ -31,11 +31,15 @@ class Application @Inject()(system: ActorSystem, config: Configuration, client: 
   }
 
   def format = Action {
-    Ok(views.html.format(gaCode))
+    Ok(views.html.tool("GraphQL Formatter", "format", "formatter", gaCode))
+  }
+
+  def graphiql = Action {
+    Ok(views.html.tool("GraphiQL", "graphiql", "graphiql-tool", gaCode))
   }
 
   def proxy = Action {
-    Ok(views.html.proxy(gaCode))
+    Ok(views.html.tool("GraphQL HTTP Proxy", "proxy", "proxy", gaCode))
   }
 
   def graphqlProxy = Action.async(parse.json) { request ⇒
@@ -56,6 +60,19 @@ class Application @Inject()(system: ActorSystem, config: Configuration, client: 
         Future.successful(result)
     }
 
+  }
+
+  def proxyRequest = Action.async(parse.json) { request ⇒
+    val url = (request.body \ "url").as[String]
+    val rawHeaders = (request.body \ "headers").as[Seq[JsObject]]
+    val removeFields = Set("url", "headers")
+    val body = JsObject(request.body.asInstanceOf[JsObject].fields.filterNot(f ⇒ removeFields contains f._1))
+    val headers = rawHeaders.map(o ⇒ (o \ "name").as[String] → (o \ "value").as[String])
+
+    client.url(url).withHeaders(headers: _*).post(body)
+      .map { resp ⇒
+        new Status(resp.status)(resp.json)
+      }
   }
 
   private def materializeSchema(schemaDef: String): Either[Result, (Schema[Any, Any], JsObject)] = {

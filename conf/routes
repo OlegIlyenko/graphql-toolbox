@@ -3,14 +3,18 @@
 # ~~~~
 
 # Home page
-GET         /                     controllers.Application.index
+GET         /                      controllers.Application.index
 
-GET         /proxy                controllers.Application.proxy
-POST        /graphql-proxy        controllers.Application.graphqlProxy
+GET         /proxy                 controllers.Application.proxy
+POST        /graphql-proxy         controllers.Application.graphqlProxy
 
-GET         /format               controllers.Application.format
-GET         /format-query         controllers.Application.formatGet(query: String)
-POST        /format-query         controllers.Application.formatPost
+GET         /format                controllers.Application.format
+GET         /format-query          controllers.Application.formatGet(query: String)
+POST        /format-query          controllers.Application.formatPost
+
+GET         /graphiql              controllers.Application.graphiql
+
+POST        /proxy-graphql-request controllers.Application.proxyRequest
 
 # Map static resources from the /public folder to the /assets URL path
-GET         /assets/*file         controllers.Assets.versioned(path="/public", file: Asset)
+GET         /assets/*file          controllers.Assets.versioned(path="/public", file: Asset)

@@ -15,6 +15,7 @@ object Webpack {
       }
 
       override def afterStarted(addr: InetSocketAddress) = {
+        afterStopped()
         process = Option(
           Process("node_modules/.bin/webpack" + sys.props.get("os.name").filter(_.toLowerCase.contains("windows")).map(_ => ".cmd").getOrElse("") + " --watch", base).run()
         )
