@@ -241,7 +241,8 @@ export class TabConfig {
         name: name,
         url: url,
         proxy: proxy,
-        headers: headers
+        headers: headers,
+        "graphiql:query": '{\n  hero {\n    id\n    name\n    \n    friends {\n      name\n    }\n  }\n}'
       })
     } else {
       // restoring
