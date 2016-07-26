@@ -30,7 +30,7 @@ export class GraphiQLTool extends React.Component {
 
     var orig = document.addEventListener
     document.addEventListener = function (name, fn) {
-      // please to look here... it's terrible
+      // please don't look here... it's terrible and very very fragile
       if (name === 'keydown' && fn.toString().indexOf('_runQueryAtCursor') != -1) {
         console.info("Ignoring GraphiQL keydown event handler!")
       } else {
