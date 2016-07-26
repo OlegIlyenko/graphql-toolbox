@@ -188,6 +188,10 @@ body, html {
   margin-right: 0;
 }
 
+.dropzone {
+  display: inline-block;
+}
+
 .dropzone-active {
   background-color: #d9ffcf;
 }
@@ -216,6 +220,17 @@ body, html {
   width: 700px;
 }
 
+.graphiql-collapsed-tab {
+  padding: 20px;
+  width: 100%;
+  flex: 2;
+  cursor: pointer;
+}
+
+/*.graphiql-collapsed-tab:hover {*/
+  /*background-color: #F4F4F4;*/
+/*}*/
+
 .tab-form .btn{
   font-size: 14.5px;
 }
@@ -226,4 +241,8 @@ body, html {
 
 .nav-tabs li a {
   top: -1px;
+}
+
+.graphiql-toolbar {
+  padding: 6px;
 }

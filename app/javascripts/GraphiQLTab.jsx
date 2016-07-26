@@ -55,6 +55,37 @@ export class GraphiQLTab extends React.Component {
   }
 
   render() {
+    if (this.state.config.state.collapsed)
+      return this.renderCollapsed()
+    else
+      return this.renderExpanded()
+  }
+
+  renderCollapsed() {
+    const tab = this.state.config
+
+    let headers = <span></span>
+
+    if (tab.state.headers.length > 0) {
+      const headerList = tab.state.headers.map(h => h.name + ": " + this.headerValue(h)).join(", ")
+      headers = <span>&nbsp;&nbsp;&nbsp;<strong>Headers:</strong> {headerList}</span>
+    }
+
+    return <div className="graphiql-tool-cont">
+      <div className="tab-top" style={{flexDirection: "row"}}>
+        <div className="graphiql-collapsed-tab" onClick={this.expand.bind(this)}>
+          <strong>URL:</strong> {tab.state.url} {headers}
+        </div>
+        <div>
+          <GraphiQLToolbar hirizontal={true} onToolbar={this.toolbar.bind(this)} hasClosed={this.props.hasClosed} />
+        </div>
+      </div>
+
+      {this.renderGraphiql(tab)}
+    </div>
+  }
+
+  renderExpanded() {
     const tab = this.state.config
 
     const url = <FormControl
@@ -167,13 +198,29 @@ export class GraphiQLTab extends React.Component {
         </div>
       </div>
 
-      <div className="graphiql-tool-cont1">
-        <GraphiQL
-          ref={cmp => this.graphiql = cmp}
-          storage={tab.getState()}
-          schema = {this.state.schema}
-          fetcher={this.fetcher.bind(this)} />
-      </div>
+      {this.renderGraphiql(tab)}
+    </div>
+  }
+
+  collapse() {
+    this.state.config.state.setState({collapsed: true})
+
+    this.setState({config: this.state.config})
+  }
+
+  expand() {
+    this.state.config.state.setState({collapsed: false})
+
+    this.setState({config: this.state.config})
+  }
+
+  renderGraphiql(tab) {
+    return <div className="graphiql-tool-cont1">
+      <GraphiQL
+        ref={cmp => this.graphiql = cmp}
+        storage={tab.getState()}
+        schema = {this.state.schema}
+        fetcher={this.fetcher.bind(this)} />
     </div>
   }
 
@@ -300,7 +347,13 @@ export class GraphiQLTab extends React.Component {
     });
   }
 
-  toolbar() {
+  toolbar(action) {
+    if (action == 'collapse') {
+      this.collapse()
+    } else if (action == 'expand') {
+      this.expand()
+    }
+
     if (this.props.onToolbar) {
       this.props.onToolbar.apply(this, arguments)
     }
