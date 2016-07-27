@@ -69,6 +69,10 @@ export class State {
   }
 }
 
+function sameQuery(q1, q2) {
+  return q1.query == q2.query && q1.variables == q2.variables
+}
+
 export class AppConfig {
   constructor(key) {
     if (typeof key === "string") {
@@ -83,7 +87,9 @@ export class AppConfig {
         usedUrls: [],
         recentHeaders: [],
         maxTabHistory: 20,
-        maxUrlHistory: 20
+        maxUrlHistory: 20,
+        maxHistory: 20,
+        savedQueries: []
       })
 
       this.tabInfo = this.state.tabIds.map(id => new TabConfig(id))
@@ -99,6 +105,23 @@ export class AppConfig {
 
       this.tabInfo = tabs.map(t => new TabConfig(t))
     }
+  }
+
+  getSavedQueries() {
+    return this.state.savedQueries || []
+  }
+
+  addSavedQuery(query) {
+    this.state.setState({savedQueries: [query, ...this.getSavedQueries()]})
+  }
+
+  hasSavedQuery(query) {
+    return !!_.find(this.getSavedQueries(), q => sameQuery(q, query))
+  }
+
+  removeSavedQuery(query) {
+    this.state.setState({savedQueries:
+      this.getSavedQueries().filter(q => !sameQuery(q, query))})
   }
 
   export() {
@@ -144,7 +167,7 @@ export class AppConfig {
   addTab() {
     const id = this.genId()
     const key = "tab" + id
-    const tab = new TabConfig(key, "Query " + (this.state.tabIds.length + 1), this.state.defaultUrl, this.state.defaultProxy, this.state.defaultHeaders)
+    const tab = new TabConfig(key, "Query " + (this.state.tabIds.length + 1), this.state.defaultUrl, this.state.defaultProxy, this.state.defaultHeaders, this.state.maxHistory || 20)
 
     this.tabInfo.push(tab)
     this.state.setState({
@@ -234,7 +257,7 @@ export class AppConfig {
 }
 
 export class TabConfig {
-  constructor(key, name, url, proxy, headers) {
+  constructor(key, name, url, proxy, headers, maxHistory) {
     if (typeof key === "string") {
       this.state = new State(key, {
         id: key,
@@ -243,11 +266,47 @@ export class TabConfig {
         proxy: proxy,
         headers: headers,
         collapsed: false,
+        maxHistory: maxHistory,
+        history: [],
         "graphiql:query": '{\n  hero {\n    id\n    name\n    \n    friends {\n      name\n    }\n  }\n}'
       })
     } else {
       // restoring
       this.state = new State(key.id, key)
+    }
+  }
+
+  getMaxHistory() {
+    return this.state.maxHistory || 20
+  }
+
+  getHistory() {
+    return this.state.history || []
+  }
+
+  getQuery() {
+    return this.state["graphiql:query"] || ""
+  }
+
+  getVariables() {
+    return this.state["graphiql:variables"] || ""
+  }
+
+  rememberQuery(query) {
+    const same = this.getHistory().length > 0 ? sameQuery(this.getHistory()[0], query) : false
+    const introspection = query.query.indexOf("query IntrospectionQuery") >= 0
+
+    if (!same && !introspection) {
+      if (this.getHistory().length >= this.getMaxHistory())
+        this.state.setState({history: _.dropRight(this.getHistory())})
+
+      this.state.setState({
+        history: [query, ...this.getHistory()]
+      })
+
+      return true
+    } else {
+      return false
     }
   }
 

@@ -3,6 +3,7 @@ import React, {PropTypes} from 'react';
 import GraphiQL from 'graphiql';
 import {GraphiQLToolbar} from './GraphiQLToolbar.jsx';
 import {HeaderEditor} from './HeaderEditor.jsx';
+import {QuerySelectionButton} from './QuerySelectionButton.jsx';
 
 import Form from 'react-bootstrap/lib/Form';
 import FormGroup from 'react-bootstrap/lib/FormGroup';
@@ -17,6 +18,8 @@ import Col from 'react-bootstrap/lib/Col';
 import ControlLabel from 'react-bootstrap/lib/ControlLabel';
 import Checkbox from 'react-bootstrap/lib/Checkbox';
 import Table from 'react-bootstrap/lib/Table';
+import Popover from 'react-bootstrap/lib/Popover';
+import OverlayTrigger from 'react-bootstrap/lib/OverlayTrigger';
 
 import {introspectionQuery} from './utility/introspectionQueries';
 
@@ -40,7 +43,8 @@ export class GraphiQLTab extends React.Component {
       config: props.tab,
       appConfig: props.app,
       header: null,
-      headerIdx: null
+      headerIdx: null,
+      editedQuery: {query: props.tab.getQuery(), variables: props.tab.getVariables()}
     }
   }
 
@@ -74,7 +78,7 @@ export class GraphiQLTab extends React.Component {
     return <div className="graphiql-tool-cont">
       <div className="tab-top" style={{flexDirection: "row"}}>
         <div className="graphiql-collapsed-tab" onClick={this.expand.bind(this)}>
-          <strong>URL:</strong> {tab.state.url} {headers}
+          <strong>URL:</strong> {tab.state.url}{tab.state.proxy ? " (proxied)" : ""} {headers}
         </div>
         <div>
           <GraphiQLToolbar hirizontal={true} onToolbar={this.toolbar.bind(this)} hasClosed={this.props.hasClosed} />
@@ -215,13 +219,59 @@ export class GraphiQLTab extends React.Component {
   }
 
   renderGraphiql(tab) {
+    let addButton = <GraphiQL.ToolbarButton title="Save Query" label="Save" onClick={this.saveQuery.bind(this)} />
+
+    if (this.state.appConfig.hasSavedQuery(this.state.editedQuery)) {
+      addButton = <GraphiQL.ToolbarButton title="Remove Query" label="Remove" onClick={this.removeQuery.bind(this)} />
+    }
+
     return <div className="graphiql-tool-cont1">
       <GraphiQL
-        ref={cmp => this.graphiql = cmp}
-        storage={tab.getState()}
-        schema = {this.state.schema}
-        fetcher={this.fetcher.bind(this)} />
+          ref={cmp => this.graphiql = cmp}
+          storage={tab.getState()}
+          query={this.state.queryUpdate ? this.state.queryUpdate.query : undefined}
+          variables={this.state.queryUpdate ? this.state.queryUpdate.variables : undefined}
+          schema={this.state.schema}
+          fetcher={this.fetcher.bind(this)}
+          onEditQuery={this.queryEdited.bind(this)}
+          onEditVariables={this.variablesEdited.bind(this)}>
+        <GraphiQL.Toolbar>
+          <QuerySelectionButton name="History" list={tab.getHistory()} onQuery={this.onSelectedQuery.bind(this)} />
+          <QuerySelectionButton name="Saved Queries" list={this.state.appConfig.getSavedQueries()} onQuery={this.onSelectedQuery.bind(this)} />
+          {addButton}
+        </GraphiQL.Toolbar>
+      </GraphiQL>
     </div>
+  }
+
+  saveQuery() {
+    this.state.appConfig.addSavedQuery(this.state.editedQuery)
+    this.setState({appConfig: this.state.appConfig})
+  }
+
+  removeQuery() {
+    this.state.appConfig.removeSavedQuery(this.state.editedQuery)
+    this.setState({appConfig: this.state.appConfig})
+  }
+
+  componentDidUpdate() {
+    if (this.state.queryUpdate) {
+      this.setState({queryUpdate: undefined})
+    }
+  }
+
+  onSelectedQuery(item) {
+    const query = {query: item.query, variables: item.variables ? item.variables : ""}
+
+    this.setState({editedQuery: query, queryUpdate: query})
+  }
+
+  queryEdited(query) {
+    this.setState({editedQuery: {query: query, variables: this.state.editedQuery.variables}})
+  }
+
+  variablesEdited(variables) {
+    this.setState({editedQuery: {query: this.state.editedQuery.query, variables: variables}})
   }
 
   headerValue(h, partial) {
@@ -389,6 +439,10 @@ export class GraphiQLTab extends React.Component {
 
         if (this.state.appConfig.rememberUrl(this.state.config.state.url))
           this.setState({appConfig: this.state.appConfig})
+
+        if (this.state.config.rememberQuery({query: params.query, variables: params.variables}))
+          this.setState({config: this.state.config})
+
 
         return json
       } catch (error) {

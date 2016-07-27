@@ -246,3 +246,20 @@ body, html {
 .graphiql-toolbar {
   padding: 6px;
 }
+
+.toolbar {
+  overflow-x: visible !important;
+}
+
+.bs-toolbar-button {
+  font-size: 13px !important;
+}
+
+.code-pop {
+  display: inline-table !important;
+}
+
+.code-pop pre {
+  border: none;
+  background: none;
+}
