@@ -231,16 +231,16 @@ export class GraphQLProxy extends React.Component {
 
             <p>
               All elements of a schema (like types, fields, arguments, etc.)
-              support descriptions. You can provide them via double-comment sign (<code>##</code>).
+              support descriptions. You can provide them via a comment.
               Here is an example:
             </p>
 
             <pre><code>{
-`## The root query type.
+`# The root query type.
 type Query {
-  ## A character from the StarWars
+  # A character from the StarWars
   person(
-    ## ID of a character
+    # ID of a character
     id: Int!): Person
 }`
             }</code></pre>
@@ -375,34 +375,34 @@ type Query {
 }
 
 const defaultQuery =
-`## It's an example schema
-## that proxies some poarets of the http://swapi.co
+`# It's an example schema
+# that proxies some poarets of the http://swapi.co
 schema @const(value: {baseUrl: "http://swapi.co"}) {
   query: Query
 }
 
-## The root query type.
+# The root query type.
 type Query {
-	## A character from the StarWars
+	# A character from the StarWars
   person(id: Int!): Person
   	@httpGet(url: "http://swapi.co/api/people/\${arg.id}")
 
-  ## A list of characters from the StarWars
+  # A list of characters from the StarWars
   people(page: Int): [Person]
   	@httpGet(url: "http://swapi.co/api/people", query: {page: "\${arg.page}"})
   	@value(name: "results")
 
-  ## A character from the StarWars
+  # A character from the StarWars
   film(id: Int!): Film
   	@httpGet(url: "http://swapi.co/api/films/\${arg.id}")
 
-  ## A list of characters from the StarWars
+  # A list of characters from the StarWars
   films(page: Int): [Film]
   	@httpGet(url: "\${ctx.baseUrl}/api/films", query: {page: "\${arg.page}"})
   	@value(name: "results")
 
-  ## just an exmaple of static data
-  ## defined directly in the schema
+  # just an exmaple of static data
+  # defined directly in the schema
   fruits: [Fruit]
     @const(value: [
       {name: "Apple", size: Small},
@@ -420,16 +420,16 @@ type Person {
   films: [Film] @httpGet(forAll: "$.films", url: "\${elem.$}")
 }
 
-## A planet from the StarWars universe
+# A planet from the StarWars universe
 type Planet {
   name: String
 }
 
 enum FruitSize {
-  ## A very big fruit
+  # A very big fruit
   Big
 
-  ## Small fruit, like apple
+  # Small fruit, like apple
   Small
 }
 

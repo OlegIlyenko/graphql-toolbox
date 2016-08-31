@@ -1,6 +1,6 @@
 import React, {PropTypes} from 'react';
 
-import GraphiQL from 'graphiql';
+import {GraphiQL} from 'graphiql/dist/components/GraphiQL';
 import {GraphiQLToolbar} from './GraphiQLToolbar.jsx';
 import {HeaderEditor} from './HeaderEditor.jsx';
 import {QuerySelectionButton} from './QuerySelectionButton.jsx';
@@ -18,8 +18,6 @@ import Col from 'react-bootstrap/lib/Col';
 import ControlLabel from 'react-bootstrap/lib/ControlLabel';
 import Checkbox from 'react-bootstrap/lib/Checkbox';
 import Table from 'react-bootstrap/lib/Table';
-import Popover from 'react-bootstrap/lib/Popover';
-import OverlayTrigger from 'react-bootstrap/lib/OverlayTrigger';
 
 import {introspectionQuery} from './utility/introspectionQueries';
 
