@@ -135,7 +135,7 @@ export class GraphiQLTool extends React.Component {
       })
     } else if (action == "clean") {
       this.state.config.cleanup()
-      const newConfig = new AppConfig("graphiql")
+      const newConfig = new AppConfig("graphiql", graphiql.bootstrapOptions)
 
       this.setState({
         config: newConfig,

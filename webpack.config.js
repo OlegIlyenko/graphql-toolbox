@@ -16,7 +16,8 @@ module.exports = {
   output: {
     path: __dirname + "/public/",
     publicPath: "/assets/",
-    filename: "[name].js"
+    filename: "[name].js",
+    library: '[name]'
   },
 
   resolve: {

@@ -20,7 +20,9 @@
   <body>
     <div id="@id"></div>
     <script src="@routes.Assets.versioned(name + ".js")" type="text/javascript"></script>
-
+    <script>
+        graphiql.bootstrap();
+    </script>
     @ga(gaCode)
   </body>
 </html>

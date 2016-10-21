@@ -74,14 +74,22 @@ function sameQuery(q1, q2) {
 }
 
 export class AppConfig {
-  constructor(key) {
+  constructor(key, options = {}) {
     if (typeof key === "string") {
+      const {
+        defaultUrl = 'http://try.sangria-graphql.org/graphql',
+        defaultQuery = '{\n  hero {\n    id\n    name\n    \n    friends {\n      name\n    }\n  }\n}',
+        defaultVariables = ''
+      } = options
+
       this.state = new State(key, {
         key: key,
         lastId: 0,
         tabIds: [],
         closedTabs: [],
-        defaultUrl: "http://try.sangria-graphql.org/graphql",
+        defaultUrl,
+        defaultQuery,
+        defaultVariables,
         defaultProxy: false,
         defaultHeaders: [],
         usedUrls: [],
@@ -92,7 +100,7 @@ export class AppConfig {
         savedQueries: []
       })
 
-      this.tabInfo = this.state.tabIds.map(id => new TabConfig(id))
+      this.tabInfo = this.state.tabIds.map(id => new TabConfig(id,{defaultQuery, defaultVariables}))
 
       if (this.getTabs().length == 0) {
         this.addTab()
@@ -167,11 +175,30 @@ export class AppConfig {
   addTab() {
     const id = this.genId()
     const key = "tab" + id
-    const tab = new TabConfig(key, "Query " + (this.state.tabIds.length + 1), this.state.defaultUrl, this.state.defaultProxy, this.state.defaultHeaders, this.state.maxHistory || 20)
+
+    const {
+      tabIds,
+      defaultUrl,
+      defaultProxy,
+      defaultHeaders,
+      maxHistory,
+      defaultQuery,
+      defaultVariables
+    } = this.state
+
+    const tab = new TabConfig(key, {
+      name: "Query " + (tabIds.length + 1),
+      url: defaultUrl,
+      proxy: defaultProxy,
+      headers: defaultHeaders,
+      maxHistory: maxHistory || 20,
+      query: defaultQuery,
+      variables: defaultVariables
+    })
 
     this.tabInfo.push(tab)
     this.state.setState({
-      tabIds: [...this.state.tabIds, key],
+      tabIds: [...tabIds, key],
       activeId: key
     })
 
@@ -257,18 +284,29 @@ export class AppConfig {
 }
 
 export class TabConfig {
-  constructor(key, name, url, proxy, headers, maxHistory) {
+  constructor(key, options = {}) {
     if (typeof key === "string") {
+      const {
+        name,
+        url,
+        proxy,
+        headers,
+        maxHistory,
+        query,
+        variables
+      } = options
+
       this.state = new State(key, {
         id: key,
-        name: name,
-        url: url,
-        proxy: proxy,
-        headers: headers,
+        name,
+        url,
+        proxy,
+        headers,
         collapsed: false,
-        maxHistory: maxHistory,
+        maxHistory,
         history: [],
-        "graphiql:query": '{\n  hero {\n    id\n    name\n    \n    friends {\n      name\n    }\n  }\n}'
+        "graphiql:query": query,
+        "graphiql:variables": variables,
       })
     } else {
       // restoring
