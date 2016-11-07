@@ -23,6 +23,8 @@ import {introspectionQuery} from './utility/introspectionQueries';
 
 import {buildClientSchema} from 'graphql';
 
+import _ from 'lodash'
+
 export class GraphiQLTab extends React.Component {
   static propTypes = {
     tab: PropTypes.object.isRequired,
@@ -129,8 +131,8 @@ export class GraphiQLTab extends React.Component {
     if (this.state.config.state.headers.length > 0) {
       let values = this.state.config.state.headers.map((header, idx) => {
         return <tr key={header.name + header.value}>
-          <td>{header.name}</td>
-          <td>{this.headerValue(header)}</td>
+          <td>{this.truncateHeaderValue(header.name)}</td>
+          <td>{this.truncateHeaderValue(this.headerValue(header))}</td>
           <td>
             <Button bsStyle="link" onClick={this.editHeader.bind(this, header, idx)}><Glyphicon glyph="edit" bsSize="small" /></Button>
             <Button bsStyle="link" onClick={this.removeHeader.bind(this, header, idx)}><Glyphicon glyph="remove" bsSize="small" /></Button>
@@ -296,6 +298,10 @@ export class GraphiQLTab extends React.Component {
     } else {
       return h.value
     }
+  }
+
+  truncateHeaderValue(s) {
+    return _.truncate(s, {length: 70})
   }
 
   addHeader(h, edit) {
