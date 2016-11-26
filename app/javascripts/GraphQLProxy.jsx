@@ -3,21 +3,21 @@ import ReactDOM from 'react-dom';
 
 import { SchemaEditor } from './SchemaEditor.jsx';
 import GraphiQL from 'graphiql';
-import CodeMirrorSizer from './utility/CodeMirrorSizer';
-import getQueryFacts from './utility/getQueryFacts';
-import getSelectedOperationName from './utility/getSelectedOperationName';
-import debounce from './utility/debounce';
-import find from './utility/find';
-import { fillLeafs } from './utility/fillLeafs';
-import { getLeft, getTop } from './utility/elementPosition';
-import { KeepLastTaskQueue } from './KeepLastTaskQueue';
+import CodeMirrorSizer from 'graphiql-workspace/dist/utility/CodeMirrorSizer';
+import getQueryFacts from 'graphiql-workspace/dist/utility/getQueryFacts';
+import getSelectedOperationName from 'graphiql-workspace/dist/utility/getSelectedOperationName';
+import debounce from 'graphiql-workspace/dist/utility/debounce';
+import find from 'graphiql-workspace/dist/utility/find';
+import { fillLeafs } from 'graphiql-workspace/dist/utility/fillLeafs';
+import { getLeft, getTop } from 'graphiql-workspace/dist/utility/elementPosition';
+import { KeepLastTaskQueue } from 'graphiql-workspace';
 
 import Modal from 'react-bootstrap/lib/Modal';
 import Button from 'react-bootstrap/lib/Button';
 
 import {
   introspectionQuery
-} from './utility/introspectionQueries';
+} from 'graphiql-workspace/dist/utility/introspectionQueries';
 
 import {
   buildClientSchema,

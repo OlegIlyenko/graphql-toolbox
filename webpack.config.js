@@ -7,7 +7,7 @@ module.exports = {
   entry: {
     format: ['whatwg-fetch', "./app/javascripts/format.jsx"],
     proxy: ['whatwg-fetch', 'bootstrap-loader/extractStyles', "./app/javascripts/proxy.jsx"],
-    graphiql: ['whatwg-fetch', 'bootstrap-loader/extractStyles', "./app/javascripts/graphiql.jsx"],
+    graphiql: ['whatwg-fetch', 'bootstrap-loader/extractStyles', "./app/javascripts/graphiql-workspace.jsx"],
     index: ['bootstrap-loader/extractStyles', "./app/javascripts/index.js"]
   },
 

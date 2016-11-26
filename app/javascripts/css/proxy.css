@@ -106,11 +106,11 @@ body {
   width: 100%;
 }
 
-#graphiql-container .editorBar {
+.graphiql-container .editorBar {
   margin-left: 1px;
 }
 
-#graphiql-container .queryWrap .CodeMirror-gutters {
+.graphiql-container .queryWrap .CodeMirror-gutters {
   cursor: col-resize;
 }
 

@@ -31,15 +31,15 @@ class Application @Inject()(system: ActorSystem, config: Configuration, client: 
   }
 
   def format = Action {
-    Ok(views.html.tool("GraphQL Formatter", "format", "formatter", gaCode))
+    Ok(views.html.workspace("GraphQL Formatter", "format", "formatter", gaCode))
   }
 
   def graphiql = Action {
-    Ok(views.html.tool("GraphiQL", "graphiql", "graphiql-tool", gaCode))
+    Ok(views.html.workspace("GraphiQL", "graphiql", "graphiql-workspace", gaCode))
   }
 
   def proxy = Action {
-    Ok(views.html.tool("GraphQL HTTP Proxy", "proxy", "proxy", gaCode))
+    Ok(views.html.workspace("GraphQL HTTP Proxy", "proxy", "proxy", gaCode))
   }
 
   def graphqlProxy = Action.async(parse.json) { request ⇒

@@ -18,10 +18,11 @@
     <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
   </head>
   <body>
-    <div id="@id"></div>
+    <div id="@id" class="@id"></div>
     <script src="@routes.Assets.versioned(name + ".js")" type="text/javascript"></script>
     <script>
-        graphiql.bootstrap();
+        if (window.graphiql && graphiql.setupGraphiQLWorkspace)
+          graphiql.setupGraphiQLWorkspace();
     </script>
     @ga(gaCode)
   </body>
