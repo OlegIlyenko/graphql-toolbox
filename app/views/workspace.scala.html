@@ -14,6 +14,8 @@
       @font()
     }
 
+    <!-- can't use bootstrap-loader for this yet, it's too buggy :( https://github.com/shakacode/bootstrap-loader/issues/238 -->
+    <link rel="stylesheet" media="screen" href="//maxcdn.bootstrapcdn.com/bootstrap/latest/css/bootstrap.min.css">
     <link rel="stylesheet" media="screen" href="@routes.Assets.versioned(name + ".css")">
     <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
   </head>

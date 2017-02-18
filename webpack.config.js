@@ -6,9 +6,9 @@ var PROD = JSON.parse(process.env.PROD_ENV || 'false');
 module.exports = {
   entry: {
     format: ['whatwg-fetch', "./app/javascripts/format.jsx"],
-    proxy: ['whatwg-fetch', 'bootstrap-loader/extractStyles', "./app/javascripts/proxy.jsx"],
-    graphiql: ['whatwg-fetch', 'bootstrap-loader/extractStyles', "./app/javascripts/graphiql-workspace.jsx"],
-    index: ['bootstrap-loader/extractStyles', "./app/javascripts/index.js"]
+    proxy: ['whatwg-fetch', "./app/javascripts/proxy.jsx"],
+    graphiql: ['whatwg-fetch', "./app/javascripts/graphiql-workspace.jsx"],
+    index: ["./app/javascripts/index.js"]
   },
 
   devtool: 'source-map',
@@ -21,14 +21,14 @@ module.exports = {
   },
 
   resolve: {
-    extensions: ['', '.webpack.js', '.web.js', '.ts', '.js'],
+    extensions: ['.webpack.js', '.web.js', '.ts', '.js'],
     alias: {
       history: 'historyjs/scripts/bundled-uncompressed/html4+html5/jquery.history'
     }
   },
 
   plugins: [
-    new ExtractTextPlugin('[name].css', {allChunks: true}),
+    new ExtractTextPlugin({filename: '[name].css', allChunks: true}),
     new webpack.ProvidePlugin({"window.jQuery": "jquery"})
   ].concat(
     PROD ? [new webpack.optimize.UglifyJsPlugin({compress: {warnings: false }})] : []
@@ -39,16 +39,16 @@ module.exports = {
   },
 
   module: {
-    loaders: [
+    rules: [
       {
         test: /\.jsx?$/, exclude: /node_modules/, loader: 'babel-loader',
         query: {presets: ['react', 'es2015', 'stage-0']}
       },
-      {test: /\.scss$/, loader: ExtractTextPlugin.extract("style", "css?sourceMap!sass?sourceMap")},
-      {test: /\.css$/, loader: ExtractTextPlugin.extract('style', 'css')},
-      {test: /\.(woff2?|ttf|eot|svg)$/, loader: 'url?limit=10000'},
-      {test: /bootstrap-sass[\\\/].*\.js/, loader: 'imports?jQuery=jquery'},
-      {test: /jquery.hotkeys[\\\/].*\.js/, loader: 'imports?jQuery=jquery'}
+      {test: /\.scss$/, loader: ExtractTextPlugin.extract({fallback: 'style-loader', loader: 'css-loader?sourceMap!sass-loader?sourceMap'})},
+      {test: /\.css$/, loader: ExtractTextPlugin.extract({fallback: 'style-loader', loader: 'css-loader'})},
+      {test: /\.(woff2?|ttf|eot|svg)$/, loader: 'url-loader?limit=10000'},
+      {test: /bootstrap-sass[\\\/].*\.js/, loader: 'imports-loader?jQuery=jquery'},
+      {test: /jquery.hotkeys[\\\/].*\.js/, loader: 'imports-loader?jQuery=jquery'}
     ]
   }
 };
