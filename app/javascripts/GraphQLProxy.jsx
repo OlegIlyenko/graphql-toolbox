@@ -377,36 +377,35 @@ type Query {
 const defaultQuery =
 `# It's an example schema
 # that proxies some poarets of the http://swapi.co
-schema @const(value: {baseUrl: "http://swapi.co"}) {
+schema  
+  @includeGraphQL(schemas: [{
+    name: "starWars" 
+    url: "http://try.sangria-graphql.org/graphql"
+  }, {
+    name: "graphqlEurope" 
+    url: "https://graphql-europe.org/graphql"
+  }]) {
+    
   query: Query
 }
 
 # The root query type.
-type Query {
-	# A character from the StarWars
+type Query 
+  @include(fields: [
+    {schema: "starWars", type: "Query"} 
+    {schema: "graphqlEurope", type: "Query"
+  }]) {
+	
+	# A character from the StarWars (REST API)
   person(id: Int!): Person
   	@httpGet(url: "http://swapi.co/api/people/\${arg.id}")
 
-  # A list of characters from the StarWars
+  # A list of characters from the StarWars (REST API)
   people(page: Int): [Person]
-  	@httpGet(url: "http://swapi.co/api/people", query: {page: "\${arg.page}"})
+  	@httpGet(
+  	  url: "http://swapi.co/api/people" 
+  	  query: {name: "page", value: "\${arg.page}"})
   	@value(name: "results")
-
-  # A character from the StarWars
-  film(id: Int!): Film
-  	@httpGet(url: "http://swapi.co/api/films/\${arg.id}")
-
-  # A list of characters from the StarWars
-  films(page: Int): [Film]
-  	@httpGet(url: "\${ctx.baseUrl}/api/films", query: {page: "\${arg.page}"})
-  	@value(name: "results")
-
-  # just an exmaple of static data
-  # defined directly in the schema
-  fruits: [Fruit]
-    @const(value: [
-      {name: "Apple", size: Small},
-      {name: "Watermelon", size: Big}])
 }
 
 type Film {
@@ -423,21 +422,7 @@ type Person {
 # A planet from the StarWars universe
 type Planet {
   name: String
-}
-
-enum FruitSize {
-  # A very big fruit
-  Big
-
-  # Small fruit, like apple
-  Small
-}
-
-type Fruit {
-  name: String
-  size: FruitSize
-}
-`;
+}`;
 
 const defaultGraphiqlQuery =
 `query {

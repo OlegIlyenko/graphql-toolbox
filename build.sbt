@@ -3,14 +3,15 @@ description := "GraphQL Toolbox"
 
 version := "1.0-SNAPSHOT"
 
-scalaVersion := "2.11.8"
+scalaVersion := "2.12.3"
 
 libraryDependencies ++= Seq(
+  guice,
   ws,
   filters,
-  "org.sangria-graphql" %% "sangria-relay" % "0.7.3",
-  "org.sangria-graphql" %% "sangria-play-json" % "0.3.2",
-  "io.gatling" %% "jsonpath" % "0.6.7"
+  "org.sangria-graphql" %% "sangria" % "1.3.1-SNAPSHOT",
+  "org.sangria-graphql" %% "sangria-play-json" % "1.0.3",
+  "io.gatling" %% "jsonpath" % "0.6.9"
 )
 
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"

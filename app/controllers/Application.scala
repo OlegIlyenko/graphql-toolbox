@@ -7,24 +7,33 @@ import play.api.libs.json.{JsObject, JsString, Json}
 import play.api.libs.ws.WSClient
 import play.api.mvc._
 import play.api.Configuration
-import sangria.execution.{ErrorWithResolver, QueryAnalysisError, Executor}
-
-import sangria.parser.{SyntaxError, QueryParser}
+import sangria.execution._
+import sangria.parser.{QueryParser, SyntaxError}
 import sangria.marshalling.playJson._
-
 import sangria.renderer.QueryRenderer
-import sangria.schema.{SchemaMaterializationException, Schema}
+import sangria.schema.{Schema, SchemaMaterializationException}
 
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
-class Application @Inject()(system: ActorSystem, config: Configuration, client: WSClient) extends Controller {
+class Application @Inject()(system: ActorSystem, config: Configuration, client: WSClient) extends InjectedController {
   import system.dispatcher
 
   val materializer = new Materializer(client)
 
-  val gaCode = config.getString("gaCode")
+  val gaCode = config.getOptional[String]("gaCode")
+
+  case class TooComplexQueryError(message: String) extends Exception(message)
+
+  val complexityRejector = QueryReducer.rejectComplexQueries(20000, (complexity: Double, _: Any) ⇒
+    TooComplexQueryError(s"Query complexity is $complexity but max allowed complexity is 20000. Please reduce the number of the fields in the query."))
+
+  val exceptionHandler = ExceptionHandler {
+    case (m, error: TooComplexQueryError) ⇒ HandledException(error.getMessage)
+    case (m, NonFatal(error)) ⇒
+      HandledException(error.getMessage)
+  }
 
   def index = Action {
     Ok(views.html.index(gaCode))
@@ -53,13 +62,12 @@ class Application @Inject()(system: ActorSystem, config: Configuration, client: 
       case _ ⇒ None
     }
 
-    materializeSchema(schema) match {
-      case Right(schema) ⇒
-        executeQuery(schema, query, variables, operation)
+    materializeSchema(schema) flatMap {
+      case Right(matSchema) ⇒
+        executeQuery(matSchema, query, variables, operation)
       case Left(result) ⇒
         Future.successful(result)
     }
-
   }
 
   def proxyRequest = Action.async(parse.json) { request ⇒
@@ -69,30 +77,33 @@ class Application @Inject()(system: ActorSystem, config: Configuration, client: 
     val body = JsObject(request.body.asInstanceOf[JsObject].fields.filterNot(f ⇒ removeFields contains f._1))
     val headers = rawHeaders.map(o ⇒ (o \ "name").as[String] → (o \ "value").as[String])
 
-    client.url(url).withHeaders(headers: _*).post(body)
+    client.url(url).addHttpHeaders(headers: _*).post(body)
       .map { resp ⇒
         new Status(resp.status)(resp.json)
       }
   }
 
-  private def materializeSchema(schemaDef: String): Either[Result, (Schema[Any, Any], JsObject)] = {
+  private def materializeSchema(schemaDef: String): Future[Either[Result, (Schema[MatCtx, Any], MatCtx)]] = {
     QueryParser.parse(schemaDef) match {
       case Success(schemaAst) ⇒
-        try {
-          Right(Schema.buildFromAst(schemaAst, materializer.schemaBuilder) → materializer.rootValue(schemaAst))
-        } catch {
-          case e: SchemaMaterializationException ⇒
-            Left(BadRequest(Json.obj("materiamlizationError" → e.getMessage)))
+        materializer.loadContext(schemaAst).map { ctx ⇒
+          try {
+            Right(Schema.buildFromAst(schemaAst, materializer.schemaBuilder(ctx).validateSchemaWithException(schemaAst)) → ctx)
+          } catch {
+            case e: SchemaMaterializationException ⇒
+              Left(BadRequest(Json.obj("materializationError" → e.getMessage)))
 
-          case NonFatal(error) ⇒
-            Left(BadRequest(Json.obj("unexpectedError" → error.getMessage)))
+            case NonFatal(error) ⇒
+              Left(BadRequest(Json.obj("unexpectedError" → error.getMessage)))
+          }
         }
+
       case Failure(error: SyntaxError) ⇒
-        Left(BadRequest(Json.obj(
+        Future.successful(Left(BadRequest(Json.obj(
           "syntaxError" → error.getMessage,
           "locations" → Json.arr(Json.obj(
             "line" → error.originalError.position.line,
-            "column" → error.originalError.position.column)))))
+            "column" → error.originalError.position.column))))))
       case Failure(error) ⇒
         throw error
     }
@@ -101,20 +112,20 @@ class Application @Inject()(system: ActorSystem, config: Configuration, client: 
   private def parseVariables(variables: String) =
     if (variables.trim == "" || variables.trim == "null") Json.obj() else Json.parse(variables).as[JsObject]
 
-  private def executeQuery(schemaAndRoot: (Schema[Any, Any], JsObject), query: String, variables: Option[JsObject], operation: Option[String]) =
+  private def executeQuery(schemaAndRoot: (Schema[MatCtx, Any], MatCtx), query: String, variables: Option[JsObject], operation: Option[String]) =
     QueryParser.parse(query) match {
 
       // query parsed successfully, time to execute it!
       case Success(queryAst) ⇒
-        val (schema, root) = schemaAndRoot
+        val (schema, ctx) = schemaAndRoot
 
         Executor.execute(schema, queryAst,
-          root = root,
-          userContext = root,
+          root = ctx.vars,
+          userContext = ctx,
           operationName = operation,
           variables = variables getOrElse Json.obj(),
-          exceptionHandler = materializer.exceptionHandler,
-          queryReducers = materializer.complexityRejecor :: Nil,
+          exceptionHandler = exceptionHandler,
+          queryReducers = complexityRejector :: Nil,
           maxQueryDepth = Some(15))
             .map(Ok(_))
             .recover {

@@ -2,123 +2,181 @@ package controllers
 
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
-import sangria.execution.{HandledException, Executor, QueryReducer}
-import sangria.{schema, ast}
-import sangria.ast.{ObjectTypeDefinition, TypeDefinition, FieldDefinition}
+import sangria.ast
 import sangria.schema._
-
 import sangria.marshalling.MarshallingUtil._
 import sangria.marshalling.playJson._
 import sangria.marshalling.queryAst._
+import sangria.schema.ResolverBasedAstSchemaBuilder.{collectGeneric, defaultAnyInputResolver, extractFieldValue, extractValue}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
 
 class Materializer(client: WSClient)(implicit ec: ExecutionContext) {
-  implicit class JsonOps(value: JsValue) {
-    def get(key: String) = value match {
-      case JsObject(fields) ⇒ fields.get(key)
-      case _ ⇒ None
-    }
-    def apply(key: String) = get(key).get
+  object Args {
+    val HeaderType = InputObjectType("Header", fields = List(
+      InputField("name", StringType),
+      InputField("value", StringType)))
 
-    def arrayValue = value.asInstanceOf[JsArray].value
+    val QueryParamType = InputObjectType("QueryParam", fields = List(
+      InputField("name", StringType),
+      InputField("value", StringType)))
 
-    def stringValue = value match {
-      case JsString(v) ⇒ v
-      case JsNumber(v) ⇒ v.toString
-      case JsBoolean(v) ⇒ v.toString
-      case v ⇒ throw new IllegalStateException(s"Invalid string: $v.")
-    }
+    val IncludeType = InputObjectType("GraphQLSchemaInclude", fields = List(
+      InputField("name", StringType),
+      InputField("url", StringType)))
 
-    def booleanValue = value match {
-      case JsBoolean(v) ⇒ v
-      case JsString(v) ⇒ v.toBoolean
-      case v ⇒ throw new IllegalStateException(s"Invalid boolean: $v.")
-    }
+    val IncludeFieldsType = InputObjectType("GraphQLIncludeFields", fields = List(
+      InputField("schema", StringType),
+      InputField("type", StringType),
+      InputField("fields", OptionInputType(ListInputType(StringType)))))
 
-    def intValue = value match {
-      case JsNumber(v) ⇒ v.intValue()
-      case JsString(v) ⇒ v.toInt
-      case v ⇒ throw new IllegalStateException(s"Invalid int: $v.")
-    }
-
-    def bigIntValue = value match {
-      case JsNumber(v) ⇒ v.toBigInt
-      case JsString(v) ⇒ BigInt(v)
-      case v ⇒ throw new IllegalStateException(s"Invalid big int: $v.")
-    }
-
-    def bigDecimalValue = value match {
-      case JsNumber(v) ⇒ v
-      case JsString(v) ⇒ BigDecimal(v)
-      case v ⇒ throw new IllegalStateException(s"Invalid big decimal: $v.")
-    }
-
-    def doubleValue = value match {
-      case JsNumber(v) ⇒ v.doubleValue
-      case JsString(v) ⇒ v.toDouble
-      case v ⇒ throw new IllegalStateException(s"Invalid double: $v.")
-    }
+    val NameOpt = Argument("name", OptionInputType(StringType))
+    val NameReq = Argument("name", StringType)
+    val Path = Argument("path", OptionInputType(StringType))
+    val JsonValue = Argument("value", StringType)
+    val Url = Argument("url", StringType)
+    val Headers = Argument("headers", OptionInputType(ListInputType(HeaderType)))
+    val QueryParams = Argument("query", OptionInputType(ListInputType(QueryParamType)))
+    val ForAll = Argument("forAll", OptionInputType(StringType))
+    val Schemas = Argument("schemas", ListInputType(IncludeType))
+    val Fields = Argument("fields", ListInputType(IncludeFieldsType))
   }
 
-  case class TooComplexQueryError(message: String) extends Exception(message)
+  object Dirs {
+    val Context = Directive("context",
+      arguments = Args.NameOpt :: Args.Path :: Nil, 
+      locations = Set(DirectiveLocation.FieldDefinition))
+    
+    val Value = Directive("value",
+      arguments = Args.NameOpt :: Args.Path :: Nil, 
+      locations = Set(DirectiveLocation.FieldDefinition))
+    
+    val Arg = Directive("arg",
+      arguments = Args.NameReq :: Nil, 
+      locations = Set(DirectiveLocation.FieldDefinition))
+    
+    val JsonConst = Directive("jsonValue",
+      arguments = Args.JsonValue :: Nil, 
+      locations = Set(DirectiveLocation.FieldDefinition, DirectiveLocation.Schema))
+    
+    val HttpGet = Directive("httpGet",
+      arguments = Args.Url :: Args.Headers :: Args.QueryParams :: Args.ForAll :: Nil,
+      locations = Set(DirectiveLocation.FieldDefinition))
 
-  val complexityRejecor = QueryReducer.rejectComplexQueries(20000, (complexity: Double, _: Any) ⇒
-    TooComplexQueryError(s"Query complexity is $complexity but max allowed complexity is 20000. Please reduce the number of the fields in the query."))
+    val IncludeGraphQL = Directive("includeGraphQL",
+      arguments = Args.Schemas :: Nil,
+      locations = Set(DirectiveLocation.Schema))
 
-  val exceptionHandler: Executor.ExceptionHandler = {
-    case (m, error: TooComplexQueryError) ⇒ HandledException(error.getMessage)
-    case (m, NonFatal(error)) ⇒
-      HandledException(error.getMessage)
+    val IncludeField = Directive("include",
+      arguments = Args.Fields :: Nil,
+      locations = Set(DirectiveLocation.Object))
   }
+  
+  def schemaBuilder(ctx: MatCtx) = AstSchemaBuilder.resolverBased[MatCtx](
+    AdditionalDirectives(Seq(Dirs.IncludeGraphQL)),
+    AdditionalTypes(ctx.allTypes.toList),
+    DirectiveResolver(Dirs.Context, c ⇒ c.withArgs(Args.NameOpt, Args.Path) { (name, path) ⇒
+      name
+        .map(n ⇒ extractValue(c.ctx.field.fieldType, c.ctx.ctx.vars.get(n)))
+        .orElse(path.map(p ⇒ extractValue(c.ctx.field.fieldType, Some(JsonPath.query(p, c.ctx.ctx.vars)))))
+        .getOrElse(throw SchemaMaterializationException(s"Can't find a directive argument 'path' or 'name'."))
+    }),
 
-  private def directiveJsonArg(d: ast.Directive, name: String) =
-    d.arguments.collectFirst {
-      case ast.Argument(`name`, ast.StringValue(str, _, _), _, _) ⇒ Json.parse(str)
-    }.getOrElse(throw new IllegalStateException(s"Can't find a directive argument $name"))
+    DirectiveResolver(Dirs.Value, c ⇒ c.withArgs(Args.NameOpt, Args.Path) { (name, path) ⇒
+      def extract(value: Any) =
+        name
+          .map(n ⇒ extractValue(c.ctx.field.fieldType, value.asInstanceOf[JsValue].get(n)))
+          .orElse(path.map(p ⇒ extractValue(c.ctx.field.fieldType, Some(JsonPath.query(p, value.asInstanceOf[JsValue])))))
+          .getOrElse(throw SchemaMaterializationException(s"Can't find a directive argument 'path' or 'name'."))
 
-  private def directiveMapArg(d: ast.Directive, name: String, mapValue: String ⇒ String = identity) =
-    d.arguments.collectFirst {
-      case ast.Argument(`name`, ast.ObjectValue(fields, _, _), _, _) ⇒
-        fields.map(f ⇒ f.name → mapValue(render(f.value)))
-      case ast.Argument(`name`, ast.ListValue(values, _, _), _, _) ⇒
-        values.flatMap {
-          case ast.ObjectValue(fields, _, _) ⇒
-            for {
-              name ← fields.find(_.name == "name")
-              value ← fields.find(_.name == "value")
-            } yield render(name.value) → render(value.value)
+      c.lastValue map (_.map(extract)) getOrElse extract(c.ctx.value)
+    }),
 
-          case _ ⇒ None
+    DirectiveResolver(Dirs.Arg, c ⇒
+      extractValue(c.ctx.field.fieldType,
+        convertArgs(c.ctx.args, c.ctx.astFields.head).get(c arg Args.NameReq))),
+
+    DynamicDirectiveResolver[MatCtx, JsValue]("const", c ⇒
+      extractValue(c.ctx.field.fieldType, Some(c.args.get("value") match {
+        case Some(JsString(str)) ⇒ JsString(fillPlaceholders(c.ctx, str))
+        case Some(jv) ⇒ jv
+        case _ ⇒ JsNull
+      }))),
+
+    DirectiveResolver(Dirs.JsonConst, c ⇒
+      extractValue(c.ctx.field.fieldType,
+        Some(Json.parse(fillPlaceholders(c.ctx, c arg Args.JsonValue))))),
+
+    DirectiveResolver(Dirs.HttpGet,
+      complexity = Some(_ ⇒ (_, _, _) ⇒ 1000.0),
+      resolve = c ⇒ c.withArgs(Args.Url, Args.Headers, Args.QueryParams, Args.ForAll) { (rawUrl, rawHeaders, rawQueryParams, forAll) ⇒
+        val args = Some(convertArgs(c.ctx.args, c.ctx.astFields.head))
+
+        def extractMap(in: Option[scala.Seq[InputObjectType.DefaultInput]], elem: JsValue) =
+          rawHeaders.map(_.map(h ⇒ h("name").asInstanceOf[String] → fillPlaceholders(c.ctx, h("value").asInstanceOf[String], args, elem))).getOrElse(Nil)
+
+        def makeRequest(tpe: OutputType[_], c: Context[MatCtx, _], args: Option[JsObject], elem: JsValue = JsNull) = {
+          val url = fillPlaceholders(c, rawUrl, args, elem)
+          val headers = extractMap(rawHeaders, elem)
+          val query = extractMap(rawQueryParams, elem)
+          val request = client.url(url).addHttpHeaders(headers: _*).addQueryStringParameters(query: _*)
+
+          request.execute().map(resp ⇒ resp.json)
         }
-    }.getOrElse(Nil).filter(_._2.nonEmpty)
 
-  private def directiveStringArg(d: ast.Directive, name: String) =
-    d.arguments.collectFirst {
-      case ast.Argument(`name`, ast.StringValue(str, _, _), _, _) ⇒ str
-    }.getOrElse(throw new IllegalStateException(s"Can't find a directive argument $name"))
+        forAll match {
+          case Some(elem) ⇒
+            JsonPath.query(elem, c.ctx.value.asInstanceOf[JsValue]) match {
+              case JsArray(elems) ⇒
+                Future.sequence(elems.map(e ⇒ makeRequest(namedType(c.ctx.field.fieldType), c.ctx, args, e))) map { v ⇒
+                  extractValue(c.ctx.field.fieldType, Some(JsArray(v.asInstanceOf[Seq[JsValue]]): JsValue))
+                }
+              case e ⇒
+                makeRequest(c.ctx.field.fieldType, c.ctx, args, e)
+            }
+          case None ⇒
+            makeRequest(c.ctx.field.fieldType, c.ctx, args)
+        }
+      }),
 
-  private def directiveStringArgOpt(d: ast.Directive, name: String) =
-    d.arguments.collectFirst {
-      case ast.Argument(`name`, ast.StringValue(str, _, _), _, _) ⇒ str
-    }
+    ExistingFieldResolver {
+      case (o: GraphQLIncludedSchema, _, f) if ctx.graphqlIncludes.exists(_.include.name == o.include.name) && f.astDirectives.exists(_.name == "delegate") ⇒
+        val schema = ctx.graphqlIncludes.find(_.include.name == o.include.name).get
 
-  private def directiveAstArg(d: ast.Directive, name: String) =
-    d.arguments.collectFirst {
-      case ast.Argument(`name`, ast, _, _) ⇒ ast
-    }.getOrElse(throw new IllegalStateException(s"Can't find a directive argument $name"))
+        c ⇒ {
+          val query = ast.Document(Vector(ast.OperationDefinition(ast.OperationType.Query, selections = c.astFields)))
+
+          ctx.request(schema, query, c.astFields.head.outputName)
+        }
+    },
+
+    DirectiveFieldProvider(Dirs.IncludeField, _.withArgs(Args.Fields) { fields ⇒
+      fields.toList.flatMap { f ⇒
+        val name = f("schema").asInstanceOf[String]
+        val typeName = f("type").asInstanceOf[String]
+        val includes = f.get("fields").asInstanceOf[Option[Option[Seq[String]]]].flatten
+
+        ctx.findFields(name, typeName, includes)
+      }
+    }),
+
+    ExistingScalarResolver {
+      case ctx ⇒ ctx.existing.copy(
+        coerceUserInput = Right(_),
+        coerceOutput = (v, _) ⇒ v,
+        coerceInput = v ⇒ Right(queryAstInputUnmarshaller.getScalaScalarValue(v)))
+    },
+
+    defaultAnyInputResolver[MatCtx, JsValue])
+
+  val rootValueLoc = Set(DirectiveLocation.Schema)
 
   def rootValue(schemaAst: ast.Document) = {
-    val values = schemaAst.definitions
-      .collect {case s: ast.SchemaDefinition ⇒ s}
-      .flatMap(_.directives)
-      .collect {
-        case dir @ ast.Directive("jsonConst", _, _, _) ⇒
-          directiveJsonArg(dir, "value")
-        case dir @ ast.Directive("const", _, _, _) ⇒
-          directiveAstArg(dir, "value").convertMarshaled[JsValue]
-      }
+    val values = collectGeneric(schemaAst,
+      GenericDirectiveResolver(Dirs.JsonConst, rootValueLoc,
+        c ⇒ Some(Json.parse(c arg Args.JsonValue))),
+      GenericDynamicDirectiveResolver[JsValue, JsValue]("const", rootValueLoc,
+        c ⇒ c.args.get("value")))
 
     JsObject(values.foldLeft(Map.empty[String, JsValue]) {
       case (acc, JsObject(vv)) ⇒ acc ++ vv
@@ -126,19 +184,34 @@ class Materializer(client: WSClient)(implicit ec: ExecutionContext) {
     })
   }
 
-  private def extractCorrectValue(tpe: OutputType[_], value: Option[JsValue]): Any = tpe match {
-    case OptionType(ofType) ⇒ Option(extractCorrectValue(ofType, value))
-    case _ if value.isEmpty || value.get == JsNull ⇒ null
-    case ListType(ofType) ⇒ value.get.arrayValue map (v ⇒ extractCorrectValue(ofType, Option(v)))
-    case t: ScalarType[_] if t eq BooleanType ⇒ value.get.booleanValue
-    case t: ScalarType[_] if t eq StringType ⇒ value.get.stringValue
-    case t: ScalarType[_] if t eq IntType ⇒ value.get.intValue
-    case t: ScalarType[_] if t eq BigIntType ⇒ value.get.bigIntValue
-    case t: ScalarType[_] if t eq BigDecimalType ⇒ value.get.bigDecimalValue
-    case t: ScalarType[_] if t eq FloatType ⇒ value.get.doubleValue
-    case t: EnumType[_] ⇒ value.get.stringValue
-    case t: CompositeType[_] ⇒ value.get
-    case t ⇒ throw new IllegalStateException(s"Builder for type '$t' is not supported yet.")
+  def graphqlIncludes(schemaAst: ast.Document) =
+    collectGeneric(schemaAst,
+      GenericDirectiveResolver(Dirs.IncludeGraphQL, resolve =
+          c ⇒ Some(c.arg(Args.Schemas).map(s ⇒ GraphQLInclude(s("url").asInstanceOf[String], s("name").asInstanceOf[String]))))).flatten
+
+  def loadIncludedSchemas(includes: Vector[GraphQLInclude]): Future[Vector[GraphQLIncludedSchema]] = {
+    val loaded =
+      includes.map { include ⇒
+        val introspectionBody = Json.obj("query" → sangria.introspection.introspectionQuery.renderPretty)
+
+        client.url(include.url).post(introspectionBody).map(resp ⇒
+          GraphQLIncludedSchema(include, Schema.buildFromIntrospection(resp.json)))
+      }
+
+    Future.sequence(loaded)
+  }
+
+  def loadContext(schemaAst: ast.Document): Future[MatCtx] = {
+    val includes = graphqlIncludes(schemaAst)
+    val vars = rootValue(schemaAst)
+
+    loadIncludedSchemas(includes).map(MatCtx(client, vars, _))
+  }
+
+  def namedType(tpe: OutputType[_]): OutputType[_] = tpe match {
+    case ListType(of) ⇒ namedType(of)
+    case OptionType(of) ⇒ namedType(of)
+    case t ⇒ t
   }
 
   private def convertArgs(args: Args, field: ast.Field): JsObject =
@@ -153,17 +226,7 @@ class Materializer(client: WSClient)(implicit ec: ExecutionContext) {
     case v ⇒ "" + v
   }
 
-  private def render(value: ast.Value) = value match {
-    case ast.StringValue(v, _, _) ⇒ v
-    case ast.BigDecimalValue(v, _, _) ⇒ v.toString
-    case ast.BigIntValue(v, _, _) ⇒ v.toString
-    case ast.FloatValue(v, _, _) ⇒ v.toString
-    case ast.BooleanValue(v, _, _) ⇒ v.toString
-    case ast.EnumValue(v, _, _) ⇒ v
-    case _ ⇒ ""
-  }
-
-  private def fillPlaceholders(ctx: Context[_, _], value: String, cachedArgs: Option[JsObject] = None, elem: JsValue = JsNull): String = {
+  private def fillPlaceholders(ctx: Context[MatCtx, _], value: String, cachedArgs: Option[JsObject] = None, elem: JsValue = JsNull): String = {
     lazy val args = cachedArgs getOrElse convertArgs(ctx.args, ctx.astFields.head)
 
     PlaceholderRegExp.findAllMatchIn(value).toVector.foldLeft(value) { case (acc, p) ⇒
@@ -178,7 +241,7 @@ class Materializer(client: WSClient)(implicit ec: ExecutionContext) {
 
       val source = scope match {
         case "value" ⇒ ctx.value.asInstanceOf[JsValue]
-        case "ctx" ⇒ ctx.ctx.asInstanceOf[JsValue]
+        case "ctx" ⇒ ctx.ctx.vars
         case "arg" ⇒ args
         case "elem" ⇒ elem
         case s ⇒ throw new IllegalStateException(s"Unsupported placeholder scope '$s'. Supported scopes are: value, ctx, arg, elem.")
@@ -194,140 +257,49 @@ class Materializer(client: WSClient)(implicit ec: ExecutionContext) {
     }
   }
 
-  def namedType(tpe: OutputType[_]): OutputType[_] = tpe match {
-    case ListType(of) ⇒ namedType(of)
-    case OptionType(of) ⇒ namedType(of)
-    case t ⇒ t
+  implicit class JsonOps(value: JsValue) {
+    def get(key: String) = value match {
+      case JsObject(fields) ⇒ fields.get(key)
+      case _ ⇒ None
+    }
+  }
+}
+
+case class MatCtx(client: WSClient, vars: JsValue, graphqlIncludes: Vector[GraphQLIncludedSchema]) {
+  val allTypes = graphqlIncludes.flatMap(_.types)
+
+  def request(schema: GraphQLIncludedSchema, query: ast.Document, extractName: String)(implicit ec: ExecutionContext): Future[JsValue] = {
+    val body = Json.obj("query" → query.renderPretty)
+
+    client.url(schema.include.url).post(body).map(resp ⇒ ((resp.json \ "data").get \ extractName).get)
   }
 
-  val schemaBuilder: AstSchemaBuilder[Any] = new DefaultAstSchemaBuilder[Any] {
-
-    val directiveMapping: Map[String, (ast.Directive, FieldDefinition) ⇒ Context[Any, _] ⇒ schema.Action[Any, _]] = Map(
-      "httpGet" → { (dir, fd) ⇒
-        def makeRequest(tpe: OutputType[_], c: Context[Any, _], args: Option[JsObject], elem: JsValue = JsNull) = {
-          val url = fillPlaceholders(c, directiveStringArg(dir, "url"), args, elem)
-
-          val headers = directiveMapArg(dir, "headers", fillPlaceholders(c, _, args, elem))
-          val query = directiveMapArg(dir, "query", fillPlaceholders(c, _, args, elem))
-
-          val request = client.url(url).withHeaders(headers: _*).withQueryString(query: _*)
-
-          val value = fd.directives.find(_.name == "value").map(d ⇒ directiveMapping(d.name)(d, fd))
-
-          request.execute().map { resp ⇒
-            value.fold(extractCorrectValue(tpe, Some(resp.json))) {fn ⇒
-              val updated = fn(c.copy(
-                schema = c.schema.asInstanceOf[Schema[Any, Any]],
-                field = c.field.asInstanceOf[Field[Any, Any]].copy(fieldType = tpe.asInstanceOf[OutputType[Any]]),
-                value = resp.json))
-
-              updated.asInstanceOf[Value[_, _]].value
-            }
-          }
-        }
-
-        c ⇒ {
-          val args = Some(convertArgs(c.args, c.astFields.head))
-
-          directiveStringArgOpt(dir, "forAll") match {
-            case Some(elem) ⇒
-              JsonPath.query(elem, c.value.asInstanceOf[JsValue]) match {
-                case JsArray(elems) ⇒
-                  Future.sequence(elems.map(e ⇒ makeRequest(namedType(c.field.fieldType), c, args, e))) map { v ⇒
-                    extractCorrectValue(c.field.fieldType, Some(JsArray(v.asInstanceOf[Seq[JsValue]])))
-                  }
-                case e ⇒
-                  makeRequest(c.field.fieldType, c, args, e)
-              }
-            case None ⇒
-              makeRequest(c.field.fieldType, c, args)
+  def findFields(name: String, typeName: String, includeFields: Option[Seq[String]]): List[MaterializedField[MatCtx, _]] =
+    graphqlIncludes.find(_.include.name == name).toList.flatMap { s ⇒
+      val tpe = s.schema.getOutputType(ast.NamedType(typeName), topLevel = true)
+      val fields = tpe.toList
+        .collect {case obj: ObjectLikeType[_, _] ⇒ obj}
+        .flatMap { t ⇒
+          val fields = includeFields match  {
+            case Some(inc) ⇒ t.uniqueFields.filter(f ⇒ includeFields contains f.name)
+            case _ ⇒ t.uniqueFields
           }
 
-
-
+          fields.asInstanceOf[Vector[Field[MatCtx, Any]]]
         }
-      },
 
-      "jsonConst" → { (dir, _) ⇒
-        val value = directiveJsonArg(dir, "value")
+      
+      fields.map(f ⇒ MaterializedField(s, f.copy(astDirectives = Vector(ast.Directive("delegate", Vector.empty)))))
+    }
+}
 
-        c ⇒ {
-          val filled = value match {
-            case JsString(str) ⇒ JsString(fillPlaceholders(c, str))
-            case v ⇒ v
-          }
+case class GraphQLInclude(url: String, name: String)
+case class GraphQLIncludedSchema(include: GraphQLInclude, schema: Schema[_, _]) extends MatOrigin {
+  private val rootTypeNames = Set(schema.query.name) ++ schema.mutation.map(_.name).toSet ++ schema.subscription.map(_.name).toSet
 
-          extractCorrectValue(c.field.fieldType, Some(filled))
-        }
-      },
+  val types = schema.allTypes.values
+    .filterNot(t ⇒ Schema.isBuiltInType(t.name) || rootTypeNames.contains(t.name)).toVector
+    .map(MaterializedType(this, _))
 
-      "const" → { (dir, _) ⇒
-        val value = directiveAstArg(dir, "value").convertMarshaled[JsValue]
-
-        c ⇒ {
-          val filled = value match {
-            case JsString(str) ⇒ JsString(fillPlaceholders(c, str))
-            case v ⇒ v
-          }
-
-          extractCorrectValue(c.field.fieldType, Some(filled))
-        }
-      },
-
-      "arg" → { (dir, _) ⇒
-        val name = directiveStringArg(dir, "name")
-
-        c ⇒ {
-          val args = convertArgs(c.args, c.astFields.head)
-          extractCorrectValue(c.field.fieldType, args.get(name))
-        }
-      },
-
-      "value" → { (dir, _) ⇒
-        directiveStringArgOpt(dir, "name") match {
-          case Some(name) ⇒
-            c ⇒ extractCorrectValue(c.field.fieldType, c.value.asInstanceOf[JsValue].get(name))
-          case None ⇒
-            directiveStringArgOpt(dir, "path") match {
-              case Some(path) ⇒
-                c ⇒ extractCorrectValue(c.field.fieldType, Some(JsonPath.query(path, c.value.asInstanceOf[JsValue])))
-              case None ⇒
-                throw new IllegalStateException(s"Can't find a directive argument 'path' or 'name'.")
-            }
-        }
-      },
-
-      "context" → { (dir, _) ⇒
-        directiveStringArgOpt(dir, "name") match {
-          case Some(name) ⇒
-            c ⇒ extractCorrectValue(c.field.fieldType, c.ctx.asInstanceOf[JsValue].get(name))
-          case None ⇒
-            directiveStringArgOpt(dir, "path") match {
-              case Some(path) ⇒
-                c ⇒ extractCorrectValue(c.field.fieldType, Some(JsonPath.query(path, c.ctx.asInstanceOf[JsValue])))
-              case None ⇒
-                throw new IllegalStateException(s"Can't find a directive argument 'path' or 'name'.")
-            }
-        }
-      })
-
-    override def resolveField(typeDefinition: TypeDefinition, definition: FieldDefinition) =
-      definition.directives.find(d ⇒ directiveMapping contains d.name) match {
-        case Some(dir) ⇒
-          directiveMapping(dir.name)(dir, definition)
-        case None ⇒
-          c ⇒ {
-            extractCorrectValue(c.field.fieldType, c.value.asInstanceOf[JsValue].get(definition.name))
-          }
-      }
-
-    override def objectTypeInstanceCheck(definition: ObjectTypeDefinition, extensions: List[ast.TypeExtensionDefinition]) =
-      Some((value, _) ⇒ value.asInstanceOf[JsObject].fields.filter(_._1 == "type").exists(_._2.asInstanceOf[JsString].value == definition.name))
-
-    override def fieldComplexity(typeDefinition: TypeDefinition, definition: FieldDefinition) =
-      if (definition.directives.exists(_.name == "httpGet"))
-        Some((_, _, _) ⇒ 1000.0)
-      else
-        super.fieldComplexity(typeDefinition, definition)
-  }
+  def description = s"included schema '${include.name}'"
 }
