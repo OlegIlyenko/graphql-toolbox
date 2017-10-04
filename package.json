@@ -8,8 +8,8 @@
     "classnames": "2.2.3",
     "codemirror": "^5.16.0",
     "codemirror-graphql": "^0.5.2",
-    "graphiql": "^0.9.3",
-    "graphql": "^0.9.1",
+    "graphiql": "^0.11.5",
+    "graphql": "^0.10.0",
     "graphql-relay": "0.5.1",
     "historyjs": "^1.8.0-b2",
     "hover.css": "^2.0.2",
@@ -25,7 +25,7 @@
     "react-relay": "0.10.0",
     "urijs": "^1.17.0",
     "whatwg-fetch": "^1.0.0",
-    "graphiql-workspace": "1.0.1"
+    "graphiql-workspace": "1.1.1"
   },
   "devDependencies": {
     "babel-core": "6.23.1",
