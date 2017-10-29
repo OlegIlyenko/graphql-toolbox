@@ -9,7 +9,7 @@ libraryDependencies ++= Seq(
   guice,
   ws,
   filters,
-  "org.sangria-graphql" %% "sangria" % "1.3.1-SNAPSHOT",
+  "org.sangria-graphql" %% "sangria" % "1.3.1",
   "org.sangria-graphql" %% "sangria-play-json" % "1.0.3",
   "io.gatling" %% "jsonpath" % "0.6.9"
 )
