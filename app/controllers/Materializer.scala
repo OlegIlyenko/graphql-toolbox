@@ -7,7 +7,7 @@ import sangria.schema._
 import sangria.marshalling.MarshallingUtil._
 import sangria.marshalling.playJson._
 import sangria.marshalling.queryAst._
-import sangria.schema.ResolverBasedAstSchemaBuilder.{collectGeneric, defaultAnyInputResolver, extractFieldValue, extractValue}
+import sangria.schema.ResolverBasedAstSchemaBuilder.{resolveDirectives, extractValue}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -167,12 +167,12 @@ class Materializer(client: WSClient)(implicit ec: ExecutionContext) {
         coerceInput = v ⇒ Right(queryAstInputUnmarshaller.getScalaScalarValue(v)))
     },
 
-    defaultAnyInputResolver[MatCtx, JsValue])
+    AnyFieldResolver.defaultInput[MatCtx, JsValue])
 
   val rootValueLoc = Set(DirectiveLocation.Schema)
 
   def rootValue(schemaAst: ast.Document) = {
-    val values = collectGeneric(schemaAst,
+    val values = resolveDirectives(schemaAst,
       GenericDirectiveResolver(Dirs.JsonConst, rootValueLoc,
         c ⇒ Some(Json.parse(c arg Args.JsonValue))),
       GenericDynamicDirectiveResolver[JsValue, JsValue]("const", rootValueLoc,
@@ -185,7 +185,7 @@ class Materializer(client: WSClient)(implicit ec: ExecutionContext) {
   }
 
   def graphqlIncludes(schemaAst: ast.Document) =
-    collectGeneric(schemaAst,
+    resolveDirectives(schemaAst,
       GenericDirectiveResolver(Dirs.IncludeGraphQL, resolve =
           c ⇒ Some(c.arg(Args.Schemas).map(s ⇒ GraphQLInclude(s("url").asInstanceOf[String], s("name").asInstanceOf[String]))))).flatten
 

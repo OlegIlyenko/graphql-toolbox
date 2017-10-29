@@ -382,8 +382,8 @@ schema
     name: "starWars" 
     url: "http://try.sangria-graphql.org/graphql"
   }, {
-    name: "graphqlEurope" 
-    url: "https://graphql-europe.org/graphql"
+    name: "universe" 
+    url: "https://www.universe.com/graphql/beta"
   }]) {
     
   query: Query
@@ -393,8 +393,8 @@ schema
 type Query 
   @include(fields: [
     {schema: "starWars", type: "Query"} 
-    {schema: "graphqlEurope", type: "Query"
-  }]) {
+    {schema: "universe", type: "Query"}
+  ]) {
 	
 	# A character from the StarWars (REST API)
   person(id: Int!): Person
