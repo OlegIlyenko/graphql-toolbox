@@ -231,16 +231,17 @@ export class GraphQLProxy extends React.Component {
 
             <p>
               All elements of a schema (like types, fields, arguments, etc.)
-              support descriptions. You can provide them via a comment.
-              Here is an example:
+              support descriptions. Here is an example:
             </p>
 
             <pre><code>{
-`# The root query type.
+`"""
+The root query type.
+"""
 type Query {
-  # A character from the StarWars
+  "A character from the StarWars"
   person(
-    # ID of a character
+    "ID of a character"
     id: Int!): Person
 }`
             }</code></pre>
@@ -377,7 +378,7 @@ type Query {
 const defaultQuery =
 `# It's an example schema
 # that proxies some poarets of the http://swapi.co
-schema  
+schema
   @includeGraphQL(schemas: [{
     name: "starWars" 
     url: "http://try.sangria-graphql.org/graphql"
@@ -389,18 +390,20 @@ schema
   query: Query
 }
 
-# The root query type.
+"""
+The root query type.
+"""
 type Query 
   @include(fields: [
     {schema: "starWars", type: "Query"} 
     {schema: "universe", type: "Query"}
   ]) {
 	
-	# A character from the StarWars (REST API)
+	"A character from the StarWars (REST API)"
   person(id: Int!): Person
   	@httpGet(url: "http://swapi.co/api/people/\${arg.id}")
 
-  # A list of characters from the StarWars (REST API)
+  "A list of characters from the StarWars (REST API)"
   people(page: Int): [Person]
   	@httpGet(
   	  url: "http://swapi.co/api/people" 
@@ -419,7 +422,7 @@ type Person {
   films: [Film] @httpGet(forAll: "$.films", url: "\${elem.$}")
 }
 
-# A planet from the StarWars universe
+"A planet from the StarWars universe"
 type Planet {
   name: String
 }`;
@@ -437,9 +440,5 @@ const defaultGraphiqlQuery =
     films {
       title
     }
-  }
-
-  films {
-    title
   }
 }`
